@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家系圖 × 生態圖 繪製工具｜台灣社工符號規範版</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<style>
+:root{
+  --ink:#12343B; --teal:#028090; --teal-soft:#e3f1f3;
+  --orange:#E8552D; --amber:#F4A93C;
+  --paper:#F7F5F1; --line:#d7d2c8; --text:#2b2b2b; --muted:#6b7772;
+  --font:"Microsoft JhengHei","微軟正黑體","PingFang TC","Noto Sans TC",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);color:var(--text);background:var(--paper);display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--ink);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:0 0 auto}
+header h1{font-size:16px;margin:0;font-weight:700}
+header h1 span{color:var(--amber)}
+.tag{font-size:11px;color:#b9cfd3;border:1px solid #35606a;padding:2px 8px;border-radius:99px}
+.spacer{flex:1}
+.btn{border:1px solid var(--line);background:#fff;color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:var(--font)}
+.btn:hover{border-color:var(--teal);color:var(--teal)}
+.btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.primary:hover{background:#cf461f;color:#fff}
+.btn.ghost{background:transparent;border-color:#3d6d78;color:#e8f2f3}
+.btn.ghost:hover{background:#1c4a53;color:#fff;border-color:var(--amber)}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+main{flex:1;display:flex;min-height:0}
+#side{width:400px;flex:0 0 400px;background:#fff;border-right:1px solid var(--line);overflow-y:auto;padding-bottom:60px}
+#stage{flex:1;position:relative;overflow:auto;background:
+  linear-gradient(#ece9e3 1px,transparent 1px) 0 0/22px 22px,
+  linear-gradient(90deg,#ece9e3 1px,transparent 1px) 0 0/22px 22px,var(--paper)}
+.tabs{display:flex;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:5}
+.tabs button{flex:1;border:0;background:#f2efe9;padding:11px 0;cursor:pointer;font-size:14px;font-family:var(--font);color:var(--muted);border-bottom:3px solid transparent}
+.tabs button.on{background:#fff;color:var(--ink);font-weight:700;border-bottom-color:var(--orange)}
+.modeswitch{display:flex;align-items:center;gap:6px;padding:10px 16px 0}
+.modeswitch button{border:1px solid var(--line);background:#fff;color:var(--muted);padding:4px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:var(--font)}
+.modeswitch button.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
+.ms-hint{font-size:11px;color:var(--muted);margin-left:2px}
+#importWrap{padding:14px 16px}
+.tpl-wrap{position:relative;display:inline-block}
+.tpl-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 8px 28px rgba(18,52,59,.2);padding:6px;width:280px;display:none}
+.tpl-menu.on{display:block}
+.tpl-menu .tpl-head{font-size:11px;color:var(--muted);padding:6px 8px 4px}
+.tpl-menu button{display:block;width:100%;text-align:left;border:0;background:0;padding:8px 10px;border-radius:6px;
+  cursor:pointer;font-size:12.5px;font-family:var(--font);color:var(--text)}
+.tpl-menu button:hover{background:var(--teal-soft);color:var(--ink)}
+.tpl-menu .tpl-note{font-size:10.5px;color:var(--muted);padding:6px 8px 2px;border-top:1px solid #eee8df;margin-top:4px}
+.imp-lead{font-size:12.5px;color:#41504e;line-height:1.7;margin:0 0 10px}
+.imp-lead b{color:var(--teal)}
+#impText{width:100%;min-height:150px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--font);font-size:13px;line-height:1.7;resize:vertical}
+#impText:focus{border-color:var(--teal);outline:none}
+.imp-act{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.imp-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6}
+#impResult{margin-top:12px}
+.imp-card{border:1px solid #e6e1d8;border-radius:8px;padding:10px;background:#fcfbf9;margin-bottom:8px}
+.imp-card h4{margin:0 0 6px;font-size:12px;color:var(--teal)}
+.imp-found{font-size:12px;line-height:1.9}
+.imp-chip{display:inline-block;font-size:11.5px;border:1px solid var(--line);border-radius:99px;padding:1px 9px;margin:2px 3px 2px 0;background:#fff}
+.imp-chip.rel{background:#eef3ff;border-color:#d4ddff;color:#3a49b3}
+.imp-chip.tie{background:#fff0e8;border-color:#f3d3c2;color:#c0562f}
+.imp-apply{display:flex;gap:8px;margin-top:6px}
+#matrixWrap{padding:14px 12px}
+.mx-tools{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.mx-scroll{overflow:auto;max-height:calc(100vh - 220px)}
+table.mx{border-collapse:collapse;font-size:12px}
+table.mx th,table.mx td{border:1px solid #e6e1d8;padding:0;text-align:center;position:relative}
+table.mx th{background:#f7f5f1;font-weight:600;color:var(--ink);padding:4px 6px;white-space:nowrap;position:sticky;z-index:1}
+table.mx thead th{top:0}
+table.mx th.rowh{left:0;z-index:2;text-align:right;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+table.mx thead th:first-child{left:0;z-index:3}
+table.mx td.diag{background:#efe9e0}
+table.mx td.cell{width:74px;height:40px;cursor:pointer}
+table.mx td.cell:hover{background:var(--teal-soft)}
+table.mx td.cell.hasrel{background:#eaf5f1}
+.mx-cellbox{display:flex;flex-direction:column;gap:1px;padding:2px}
+.mx-tag{font-size:10.5px;border-radius:3px;padding:1px 2px;line-height:1.25}
+.mx-tag.uni{background:#e6ecff;color:#3a49b3}
+.mx-tag.tie{background:#ffeee6;color:#c0562f}
+.mx-tag.kid{background:#e8f3e8;color:#2f8f4e}
+.mx-legend{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.7}
+.mx-pop{position:fixed;z-index:50;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 24px rgba(18,52,59,.18);padding:10px;width:220px;font-size:12px}
+.mx-pop h4{margin:0 0 6px;font-size:12px;color:var(--teal)}
+.mx-pop .grp{margin-bottom:8px}
+.mx-pop select{width:100%;margin-top:3px}
+.mx-pop .pop-act{display:flex;justify-content:space-between;margin-top:8px}
+.mx-pop .lnk{font-size:11px;color:#c0392b;cursor:pointer;background:0;border:0}
+.mx-pop .lnk.ok{color:var(--teal)}
+.sec{padding:14px 16px;border-bottom:1px solid #eee8df}
+.sec h2{font-size:13px;margin:0 0 10px;color:var(--teal);letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.sec h2::before{content:"";width:4px;height:14px;background:var(--amber);border-radius:2px}
+.sec h2{cursor:pointer;user-select:none}
+.sec h2 .car{font-size:11px;color:var(--muted);transition:transform .15s;margin-left:-2px}
+.sec.collapsed h2 .car{transform:rotate(-90deg)}
+.sec.collapsed .secbody{display:none}
+.sec h2 .cnt{font-size:11px;color:#fff;background:var(--teal);border-radius:99px;padding:0 7px;font-weight:400;margin-left:auto}
+.sec h2 .cnt:empty{display:none}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.65;margin:6px 0 0}
+.row{border:1px solid #e6e1d8;border-radius:8px;padding:9px;margin-bottom:8px;background:#fcfbf9}
+.row .top{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.row .top .ord{display:flex;flex-direction:column;align-items:center;gap:1px;flex:0 0 auto}
+.row .top .idx{font-size:11px;color:#fff;background:var(--teal);width:20px;height:20px;border-radius:50%;display:grid;place-items:center}
+.row .top .mv{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:8px;line-height:1;padding:0;height:9px}
+.row .top .mv:hover:not(:disabled){color:var(--teal)}
+.row .top .mv:disabled{opacity:.25;cursor:default}
+input[type=text],select{border:1px solid var(--line);border-radius:5px;padding:5px 7px;font-size:13px;font-family:var(--font);background:#fff;min-width:0}
+.f-name{flex:1}
+.f-age{width:54px}
+.chk{font-size:12px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;color:#444;white-space:nowrap}
+.del{border:0;background:transparent;color:#c0392b;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
+.pick{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding-top:6px;border-top:1px dashed #e0dad0}
+.pick .lbl{font-size:11px;color:var(--muted);width:100%;margin-bottom:2px}
+.chip{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 9px;cursor:pointer;background:#fff;user-select:none}
+.chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.kidrow{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12px}
+.kidrow .nm{flex:1;color:#41504e}
+.warn{font-size:11px;color:#c0392b;margin-top:4px}
+.empty{font-size:12px;color:var(--muted);padding:8px;text-align:center;border:1px dashed var(--line);border-radius:6px}
+.toolbar{position:sticky;top:0;z-index:4;background:rgba(247,245,241,.94);backdrop-filter:blur(4px);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar .t{font-size:12px;color:var(--muted)}
+.zoom{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.zoom b{width:42px;text-align:center;color:var(--ink)}
+#canvasWrap{transform-origin:top left}
+#canvasWrap{padding:20px}
+svg{box-shadow:0 2px 14px rgba(18,52,59,.10);border-radius:4px}
+.node{cursor:grab}
+details.help{border-bottom:1px solid #eee8df}
+details.help summary{padding:12px 16px;cursor:pointer;font-size:13px;font-weight:700;color:var(--ink);list-style:none;display:flex;align-items:center;gap:6px}
+details.help summary::before{content:"▸";color:var(--orange)}
+details.help[open] summary::before{content:"▾"}
+details.help .body{padding:0 16px 14px;font-size:12.5px;line-height:1.8;color:#41504e}
+details.help .body ol{padding-left:18px;margin:6px 0}
+details.help .body code{background:var(--teal-soft);padding:1px 5px;border-radius:3px;color:var(--ink)}
+details.help .body b{color:var(--ink)}
+.help-fig{margin:8px 0;border:1px solid #e6e1d8;border-radius:8px;overflow:hidden;background:#2b2b2b}
+.help-fig svg{display:block;width:100%;height:auto}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
+#toast.on{pointer-events:auto}
+.undo-btn{margin-left:10px;border:1px solid var(--amber);background:transparent;color:var(--amber);border-radius:5px;padding:3px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
+.undo-btn:hover{background:var(--amber);color:var(--ink)}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:900px){main{flex-direction:column}#side{width:100%;flex:0 0 auto;max-height:46vh;border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>家系圖 <span>×</span> 生態圖 繪製工具</h1>
+  <span class="tag">台灣社工符號規範</span>
+  <div class="spacer"></div>
+  <span class="tpl-wrap">
+    <button class="btn ghost" onclick="toggleTplMenu(event)">範本 ▾</button>
+    <div id="tplMenu" class="tpl-menu">
+      <div class="tpl-head">常見家庭結構（載入後可直接改）</div>
+      <button onclick="loadTemplate('demo')">完整示範案例（三代 + 情感 + 生活圈）</button>
+      <button onclick="loadTemplate('nuclear')">核心家庭：夫妻 + 子女</button>
+      <button onclick="loadTemplate('twogen')">兩代同堂：父母 + 已婚子女 + 孫</button>
+      <button onclick="loadTemplate('threegen')">三代同堂：祖父母 + 父母 + 子女</button>
+      <button onclick="loadTemplate('single')">單親家庭：離婚 + 子女</button>
+      <button onclick="loadTemplate('remarry')">重組家庭：再婚 + 前段子女</button>
+      <button onclick="loadTemplate('grand')">隔代教養：祖父母 + 孫</button>
+      <button onclick="loadTemplate('couple')">兩人家庭：夫妻（無子女）</button>
+      <div class="tpl-note">載入會清空目前畫面。想保留請先「存檔 JSON」。</div>
+    </div>
+  </span>
+  <button class="btn ghost" onclick="saveJSON()">存檔 JSON</button>
+  <button class="btn ghost" onclick="document.getElementById('loadFile').click()">開啟 JSON</button>
+  <input type="file" id="loadFile" accept=".json" style="display:none" onchange="loadJSON(this)">
+  <button class="btn ghost" onclick="exportSVG()">下載 SVG</button>
+  <button class="btn ghost" onclick="exportPNG()">下載 PNG</button>
+  <button class="btn primary" onclick="exportPPTX()">下載 PPTX（可編輯）</button>
+</header>
+
+<main>
+  <aside id="side">
+    <div class="tabs">
+      <button id="tabG" class="on" onclick="setMode('genogram')">家系圖</button>
+      <button id="tabE" onclick="setMode('ecomap')">生態圖</button>
+    </div>
+
+    <details class="help">
+      <summary>下載後怎麼在 Word／PPT 修改？（重要）</summary>
+      <div class="body">
+        <b>方法一：SVG → 在 Word 拆成可編輯圖形（最推薦）</b>
+        <ol>
+          <li>按上方「<b>下載 SVG</b>」。</li>
+          <li>Word 中「插入 → 圖片 → 此裝置」，選剛下載的 .svg。</li>
+          <li>點一下插入的圖，上方會出現「<b>圖形格式</b>」索引標籤，點它。</li>
+          <li>在最左邊按「<b>轉換成圖形</b>」（見下圖位置），整張圖就變成 Word 原生圖形。</li>
+          <li>此時再右鍵 → <code>群組 → 取消群組</code>，就能<b>逐一點選方框、圓圈、線條與文字</b>，自由搬移、改色、改線條。</li>
+          <li>要<b>調整文字大小</b>：點到該文字方塊後，用「常用」的字型大小欄，或拖動邊框即可——每個人的字都能個別調。</li>
+        </ol>
+        <div class="help-fig" id="wordFig"></div>
+        <p class="hint">「轉換成圖形」只出現在點選圖片後的「圖形格式」索引標籤裡。若沒看到，先確認有點到圖片。</p>
+        <b style="display:block;margin-top:10px">方法二：PPTX（相容性最好，免轉換）</b>
+        <ol>
+          <li>按「<b>下載 PPTX（可編輯）</b>」，用 PowerPoint 開啟。</li>
+          <li>每個人物、每條線本來就是原生圖形，點了直接改，文字大小也在「常用」調。</li>
+          <li>調好後 <code>Ctrl+A</code> 全選、複製，貼回 Word 即可（貼上的也是可編輯物件）。</li>
+        </ol>
+        <p class="hint">想把圖疊在紀錄文字上：先勾工具列「透明背景」再下載 PNG 或 SVG。</p>
+        <p class="hint">要把圖疊在紀錄文字上，勾「透明背景」再下載 PNG。</p>
+      </div>
+    </details>
+
+    <div id="panelG">
+      <div class="modeswitch">
+        <button id="mFormBtn" class="on" onclick="setEditMode('form')">表格</button>
+        <button id="mMatrixBtn" onclick="setEditMode('matrix')">關係矩陣</button>
+        <button id="mImportBtn" onclick="setEditMode('import')">貼逐字稿</button>
+      </div>
+      <div id="matrixWrap" style="display:none"></div>
+      <div id="importWrap" style="display:none">
+        <div class="imp">
+          <p class="imp-lead">把訪談逐字稿或個案摘要貼進來，系統會自動抓出家庭成員與關係，填進表格讓你確認、修改。<b>文字只在你的瀏覽器處理，不會上傳。</b></p>
+          <textarea id="impText" placeholder="範例：&#10;案主 35 歲，與案妻結婚，育有長子（10歲）、次子（8歲）。&#10;案主與案父關係衝突，和案母同住。&#10;案父 65 歲，案母 62 歲，兩人已離婚。"></textarea>
+          <div class="imp-act">
+            <button class="btn primary" onclick="runParse()">解析逐字稿</button>
+            <button class="btn" id="aiBtn" style="display:none" onclick="runAIParse()">✨ 用瀏覽器 AI 加強</button>
+          </div>
+          <div id="impResult"></div>
+          <div class="imp-note" id="aiNote"></div>
+        </div>
+      </div>
+      <div id="formWrap">
+      <div class="sec" data-key="mem">
+        <h2 onclick="toggleSec('mem')"><span class="car">▾</span>成員 <span class="cnt" id="cntMem"></span></h2>
+        <div class="secbody">
+          <div id="personList"></div>
+          <button class="btn sm" onclick="addPerson()">＋ 新增成員</button>
+          <p class="hint">案主依慣例以灰底填滿；出生序自動由長到幼排列。用「↑↓」可手動調整登打順序。</p>
+        </div>
+      </div>
+      <div class="sec" data-key="uni">
+        <h2 onclick="toggleSec('uni')"><span class="car">▾</span>婚姻／伴侶關係 <span class="cnt" id="cntUni"></span></h2>
+        <div class="secbody">
+          <div id="unionList"></div>
+          <button class="btn sm" onclick="addUnion()">＋ 新增關係</button>
+          <p class="hint">同一人有多段婚姻時，會自動在線上標序號（時間由遠而近）。</p>
+        </div>
+      </div>
+      <div class="sec" data-key="tie">
+        <h2 onclick="toggleSec('tie')"><span class="car">▾</span>情感關係 <span class="cnt" id="cntTie"></span></h2>
+        <div class="secbody">
+          <div id="tieList"></div>
+          <button class="btn sm" onclick="addTie()">＋ 新增情感連結</button>
+        </div>
+      </div>
+      <div class="sec" data-key="cir">
+        <h2 onclick="toggleSec('cir')"><span class="car">▾</span>生活圈（同住／關係密切） <span class="cnt" id="cntCir"></span></h2>
+        <div class="secbody">
+          <div id="circleList"></div>
+          <button class="btn sm" onclick="addCircle()">＋ 新增生活圈</button>
+          <p class="hint">圈起來的成員代表同住或關係密切。若圈線穿過非圈內的人，拖曳該成員讓開即可。</p>
+        </div>
+      </div>
+      </div><!-- /formWrap -->
+    </div>
+
+    <div id="panelE" style="display:none">
+      <div class="sec">
+        <h2>中心家庭</h2>
+        <input type="text" id="ecoCenter" style="width:100%" placeholder="例：王小明家庭"
+               oninput="state.eco.center=this.value;render()">
+        <input type="text" id="ecoMembers" style="width:100%;margin-top:6px"
+               placeholder="成員，用頓號分隔：王小明、母、姊" oninput="state.eco.members=this.value;render()">
+      </div>
+      <div class="sec">
+        <h2>外部系統</h2>
+        <div id="sysList"></div>
+        <button class="btn sm" onclick="addSystem()">＋ 新增系統</button>
+        <p class="hint">線粗＝連結強度，虛線＝薄弱，鋸齒＝壓力／衝突，箭頭＝資源流向。</p>
+      </div>
+    </div>
+
+    <details class="help">
+      <summary>符號對照（依台灣社工慣例）</summary>
+      <div class="body">
+        <b>人物</b>：男□／女○／不確定對象或懷孕不知性別△；案主灰底填滿；已故整個打叉；身障或慢性病右下角塗黑。<br>
+        <b>婚姻</b>：結婚實線／同居虛線／離婚線上打✕／分居單斜線；多段婚姻標序號。<br>
+        <b>子女</b>：親生實線／收養、寄養虛線（實線代表現況法律關係）；多胞胎共用同一頂點。<br>
+        <b>情感</b>：正向細實線／正向親密粗線／過度親密更粗／衝突鋸齒／衝突又親密粗線加鋸齒／關係惡化斜線／溝通中斷⊣⊢／疏遠虛線。<br>
+        <b>生活圈</b>：不規則圈，圈內為關係密切者。
+        <p class="hint">符號依據：家系圖一般符號代表涵義表、家系圖進階表示法（周瑞德）。</p>
+      </div>
+    </details>
+  </aside>
+
+  <section id="stage">
+    <div class="toolbar">
+      <button class="btn sm" onclick="autoLayout()">重新自動排版</button>
+      <label class="chk"><input type="checkbox" id="optSort" checked onchange="autoLayout()"> 長幼排序</label>
+      <label class="chk"><input type="checkbox" id="optLegend" onchange="render()"> 附圖例</label>
+      <label class="chk"><input type="checkbox" id="optColor" onchange="render()"> 彩色標示</label>
+      <label class="chk"><input type="checkbox" id="optAlpha" onchange="render()"> 透明背景</label>
+      <select id="optAge" onchange="syncUI()" style="font-size:12px;padding:3px 5px">
+        <option value="age">年齡欄：歲數</option>
+        <option value="birth">年齡欄：出生年（民國）</option>
+        <option value="birthAge">年齡欄：填民國出生年、顯示歲數</option>
+      </select>
+      <select id="optIndex" onchange="render()" style="font-size:12px;padding:3px 5px" title="案主的標示方式">
+        <option value="shade">案主：灰底（教科書標準）</option>
+        <option value="double">案主：雙框</option>
+        <option value="red">案主：紅框（醒目）</option>
+      </select>
+      <div class="spacer"></div>
+      <span class="zoom">檢視
+        <button class="btn sm" onclick="zoomBy(-0.1)">－</button>
+        <b id="zoomPct">100%</b>
+        <button class="btn sm" onclick="zoomBy(0.1)">＋</button>
+        <button class="btn sm" onclick="zoomFit()" title="縮放至適合視窗">符合</button>
+      </span>
+      <span class="t" id="stat"></span>
+    </div>
+    <div id="canvasWrap"></div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+/* ===================== 狀態 ===================== */
+let uid = 1; const nid = p => p + (uid++);
+const state = {
+  mode:'genogram',
+  geno:{ persons:[], unions:[], ties:[], circles:[] },
+  eco:{ center:'個案家庭', members:'', systems:[] }
+};
+const GEN = { NW:72, NH:72, SLOT:118, GENH:170, MARGIN:60 };
+const ECO = { CR:92, SR:62 };
+const FS = () => 1;               // 文字倍率（固定）
+const IS = () => 1;               // 圖內文字倍率（固定）
+const nodeScale = () => 1;        // 圖形倍率（固定）
+function applyScales(){}           // 保留呼叫點，不做任何事
+const INK='#12343B', GREY='#6b7772', SHADE='#D9D9D9';
+const C = () => optColor.checked
+  ? {tie:'#028090', stress:'#E8552D', ring:'#6b7772'}
+  : {tie:INK, stress:INK, ring:GREY};
+
+/* ===================== 資料 ===================== */
+function addPerson(d={}){
+  state.geno.persons.push(Object.assign(
+    {id:nid('p'),name:'',gender:'male',age:'',dead:false,index:false,ill:false,
+     x:null,y:null,gen:0,pinned:false}, d));
+  syncUI();
+}
+function addUnion(d={}){
+  state.geno.unions.push(Object.assign(
+    {id:nid('u'),a:'',b:'',type:'married',children:[]}, d));
+  syncUI();
+}
+function addTie(d={}){
+  state.geno.ties.push(Object.assign({id:nid('t'),a:'',b:'',type:'close'},d));
+  syncUI();
+}
+function addCircle(d={}){
+  state.geno.circles.push(Object.assign({id:nid('c'),label:'同住',members:[]},d));
+  syncUI();
+}
+function addSystem(d={}){
+  state.eco.systems.push(Object.assign(
+    {id:nid('s'),label:'',strength:'normal',stress:false,flow:'none',x:null,y:null,pinned:false},d));
+  syncUI();
+}
+const del=(arr,id)=>{const i=arr.findIndex(o=>o.id===id); if(i>-1) arr.splice(i,1); syncUI();};
+const P=id=>state.geno.persons.find(p=>p.id===id);
+const U=id=>state.geno.unions.find(u=>u.id===id);
+const S=id=>state.eco.systems.find(s=>s.id===id);
+const CI=id=>state.geno.circles.find(c=>c.id===id);
+const label=p=>{ if(!p) return '—';
+  if(p.name) return p.name;
+  const i=state.geno.persons.indexOf(p);
+  return i>-1?`成員${i+1}`:'未命名'; };
+const ageMode=()=>optAge?.value||'age';
+const agePlaceholder=()=>ageMode()==='age'?'歲':'民國年';
+function toWestern(v){ const n=parseFloat(v); if(isNaN(n)) return NaN; return n>=1911?n:n+1911; }
+const toMinguo=v=>{ const n=parseFloat(v); return isNaN(n)?NaN:(n>=1911?n-1911:n); };
+function displayAge(p){
+  const raw=String(p.age??'').trim(); if(!raw) return '';
+  const m=ageMode();
+  if(m==='birth'){ const g=toMinguo(raw); return isNaN(g)?raw:`${g}年`; }
+  if(m==='birthAge'){
+    const w=toWestern(raw); if(isNaN(w)) return raw;
+    const a=new Date().getFullYear()-w;
+    return (a>=0&&a<130)?String(a):raw;
+  }
+  return raw;
+}
+function seniority(p){                 // 數字越大代表越年長
+  const raw=String(p?.age??'').trim(); if(!raw) return null;
+  const n=parseFloat(raw); if(isNaN(n)) return null;
+  return ageMode()==='age' ? n : -toWestern(raw);
+}
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+function setMode(m){
+  state.mode=m;
+  tabG.classList.toggle('on',m==='genogram');
+  tabE.classList.toggle('on',m==='ecomap');
+  panelG.style.display = m==='genogram'?'':'none';
+  panelE.style.display = m==='ecomap'?'':'none';
+  render();
+}
+function autoLayout(){
+  state.geno.persons.forEach(p=>{p.x=null;p.y=null;p.pinned=false;});
+  state.eco.systems.forEach(s=>{s.x=null;s.y=null;s.pinned=false;});
+  syncUI();
+}
+
+/* ===================== 表單 ===================== */
+const opts=(sel)=>`<option value="" disabled ${!P(sel)?'selected':''}>— 選成員 —</option>`+
+  state.geno.persons.map(p=>
+  `<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(label(p))}</option>`).join('');
+
+function syncUI(){
+  personList.innerHTML = state.geno.persons.length ? state.geno.persons.map((p,i)=>`
+    <div class="row">
+      <div class="top">
+        <span class="ord">
+          <button class="mv" ${i===0?'disabled':''} onclick="movePerson(${i},-1)" title="上移">▲</button>
+          <span class="idx">${i+1}</span>
+          <button class="mv" ${i===state.geno.persons.length-1?'disabled':''} onclick="movePerson(${i},1)" title="下移">▼</button>
+        </span>
+        <input type="text" class="f-name" placeholder="姓名或稱謂" value="${esc(p.name)}"
+               oninput="P('${p.id}').name=this.value;render()">
+        <select onchange="P('${p.id}').gender=this.value;render()">
+          <option value="male" ${p.gender==='male'?'selected':''}>男</option>
+          <option value="female" ${p.gender==='female'?'selected':''}>女</option>
+          <option value="unknown" ${p.gender==='unknown'?'selected':''}>不確定／懷孕</option>
+        </select>
+        <input type="text" class="f-age" placeholder="${agePlaceholder()}" value="${esc(p.age)}"
+               title="${ageMode()==='age'?'輸入歲數':'輸入民國出生年（填西元會自動換算）'}"
+               oninput="P('${p.id}').age=this.value;render()"
+               onchange="autoSort()">
+        <button class="del" onclick="removePerson('${p.id}')">✕</button>
+      </div>
+      <label class="chk"><input type="checkbox" ${p.index?'checked':''}
+        onchange="P('${p.id}').index=this.checked;render()"> 案主</label>
+      <label class="chk" style="margin-left:8px"><input type="checkbox" ${p.dead?'checked':''}
+        onchange="P('${p.id}').dead=this.checked;render()"> 已故</label>
+      <label class="chk" style="margin-left:8px"><input type="checkbox" ${p.ill?'checked':''}
+        onchange="P('${p.id}').ill=this.checked;render()"> 身障／慢性病</label>
+    </div>`).join('') : `<div class="empty">尚未建立成員</div>`;
+
+  unionList.innerHTML = state.geno.unions.length ? state.geno.unions.map((u,i)=>`
+    <div class="row">
+      <div class="top">
+        <span class="idx">${i+1}</span>
+        <select style="flex:1" onchange="setU('${u.id}','a',this.value)">${opts(u.a)}</select>
+        <select onchange="setU('${u.id}','type',this.value)">
+          <option value="married" ${u.type==='married'?'selected':''}>結婚</option>
+          <option value="divorced" ${u.type==='divorced'?'selected':''}>離婚</option>
+          <option value="separated" ${u.type==='separated'?'selected':''}>分居</option>
+          <option value="cohabit" ${u.type==='cohabit'?'selected':''}>同居</option>
+        </select>
+        <select style="flex:1" onchange="setU('${u.id}','b',this.value)">${opts(u.b)}</select>
+        <button class="del" onclick="del(state.geno.unions,'${u.id}')">✕</button>
+      </div>
+      ${(!P(u.a)||!P(u.b)||u.a===u.b)?'<div class="warn">↑ 請在兩側各選一位（不同）成員，連線才會出現</div>':''}
+      <div class="pick">
+        <span class="lbl">子女（點選加入）</span>
+        ${state.geno.persons.filter(p=>p.id!==u.a&&p.id!==u.b).map(p=>
+          `<span class="chip ${u.children.some(c=>c.id===p.id)?'on':''}"
+                 onclick="toggleKid('${u.id}','${p.id}')">${esc(label(p))}</span>`).join('')
+          || '<span class="lbl">（先新增其他成員）</span>'}
+      </div>
+      ${u.children.map((c,ci)=>`
+        <div class="kidrow">
+          <span class="nm">${esc(label(P(c.id)))}</span>
+          <select onchange="setKid('${u.id}','${c.id}','link',this.value)">
+            <option value="birth" ${c.link==='birth'?'selected':''}>親生</option>
+            <option value="adopted" ${c.link==='adopted'?'selected':''}>收養</option>
+            <option value="foster" ${c.link==='foster'?'selected':''}>寄養</option>
+          </select>
+          ${ci>0?`<label class="chk"><input type="checkbox" ${c.twin?'checked':''}
+            onchange="setKid('${u.id}','${c.id}','twin',this.checked)"> 與上一位多胞胎</label>`:''}
+        </div>`).join('')}
+    </div>`).join('') : `<div class="empty">尚未建立婚姻／伴侶關係</div>`;
+
+  tieList.innerHTML = state.geno.ties.length ? state.geno.ties.map(t=>`
+    <div class="row"><div class="top">
+      <select style="flex:1" onchange="setT('${t.id}','a',this.value)">${opts(t.a)}</select>
+      <select onchange="setT('${t.id}','type',this.value)">
+        <option value="positive" ${t.type==='positive'?'selected':''}>正向關係</option>
+        <option value="close" ${t.type==='close'?'selected':''}>正向親密</option>
+        <option value="fused" ${t.type==='fused'?'selected':''}>過度親密</option>
+        <option value="conflict" ${t.type==='conflict'?'selected':''}>衝突</option>
+        <option value="closeconflict" ${t.type==='closeconflict'?'selected':''}>衝突又親密</option>
+        <option value="worsening" ${t.type==='worsening'?'selected':''}>關係惡化</option>
+        <option value="cutoff" ${t.type==='cutoff'?'selected':''}>溝通中斷</option>
+        <option value="distant" ${t.type==='distant'?'selected':''}>疏遠</option>
+      </select>
+      <select style="flex:1" onchange="setT('${t.id}','b',this.value)">${opts(t.b)}</select>
+      <button class="del" onclick="del(state.geno.ties,'${t.id}')">✕</button>
+    </div>${(!P(t.a)||!P(t.b)||t.a===t.b)?'<div class="warn">↑ 請在兩側各選一位（不同）成員，連線才會出現</div>':''}</div>`).join('') : `<div class="empty">尚未建立情感連結</div>`;
+
+  circleList.innerHTML = state.geno.circles.length ? state.geno.circles.map(c=>`
+    <div class="row">
+      <div class="top">
+        <input type="text" class="f-name" placeholder="標註，例：同住" value="${esc(c.label)}"
+               oninput="CI('${c.id}').label=this.value;render()">
+        <button class="del" onclick="del(state.geno.circles,'${c.id}')">✕</button>
+      </div>
+      <div class="pick">
+        <span class="lbl">圈內成員</span>
+        ${state.geno.persons.map(p=>
+          `<span class="chip ${c.members.includes(p.id)?'on':''}"
+                 onclick="toggleMember('${c.id}','${p.id}')">${esc(label(p))}</span>`).join('')
+          || '<span class="lbl">（先新增成員）</span>'}
+      </div>
+    </div>`).join('') : `<div class="empty">尚未建立生活圈</div>`;
+
+  sysList.innerHTML = state.eco.systems.length ? state.eco.systems.map((s,i)=>`
+    <div class="row">
+      <div class="top">
+        <span class="idx">${i+1}</span>
+        <input type="text" class="f-name" placeholder="例：學校、里長、就業服務站" value="${esc(s.label)}"
+               oninput="S('${s.id}').label=this.value;render()">
+        <button class="del" onclick="del(state.eco.systems,'${s.id}')">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <select onchange="S('${s.id}').strength=this.value;render()">
+          <option value="strong" ${s.strength==='strong'?'selected':''}>連結：強</option>
+          <option value="normal" ${s.strength==='normal'?'selected':''}>連結：一般</option>
+          <option value="weak" ${s.strength==='weak'?'selected':''}>連結：薄弱</option>
+        </select>
+        <select onchange="S('${s.id}').flow=this.value;render()">
+          <option value="none" ${s.flow==='none'?'selected':''}>能量：不標示</option>
+          <option value="in" ${s.flow==='in'?'selected':''}>能量：流向家庭</option>
+          <option value="out" ${s.flow==='out'?'selected':''}>能量：流向系統</option>
+          <option value="both" ${s.flow==='both'?'selected':''}>能量：雙向</option>
+        </select>
+      </div>
+      <label class="chk" style="margin-top:6px"><input type="checkbox" ${s.stress?'checked':''}
+        onchange="S('${s.id}').stress=this.checked;render()"> 此連結帶來壓力／衝突</label>
+    </div>`).join('') : `<div class="empty">尚未建立外部系統</div>`;
+
+  render();
+}
+function setU(id,k,v){
+  const u=U(id); u[k]=v;
+  if(k!=='type') u.children=u.children.filter(c=>c.id!==u.a&&c.id!==u.b);
+  syncUI();
+}
+function setT(id,k,v){ Object.assign(state.geno.ties.find(o=>o.id===id),{[k]:v}); syncUI(); }
+function setKid(uid_,pid,k,v){ const c=U(uid_).children.find(c=>c.id===pid); c[k]=v; syncUI(); }
+function toggleKid(uid_,pid){
+  const u=U(uid_), i=u.children.findIndex(c=>c.id===pid);
+  i>-1 ? u.children.splice(i,1) : u.children.push({id:pid,link:'birth',twin:false});
+  autoLayout();
+}
+function toggleMember(cid,pid){
+  const c=CI(cid), i=c.members.indexOf(pid);
+  i>-1 ? c.members.splice(i,1) : c.members.push(pid);
+  syncUI();
+}
+function autoSort(){ optSort.checked ? autoLayout() : render(); }
+function movePerson(i,dir){
+  const a=state.geno.persons, j=i+dir;
+  if(j<0||j>=a.length) return;
+  [a[i],a[j]]=[a[j],a[i]];
+  if(!optSort.checked){ autoLayout(); } else { syncUI(); }
+}
+const secState={mem:true,uni:true,tie:true,cir:true};   // true=展開
+function toggleSec(k){
+  secState[k]=!secState[k];
+  const el=document.querySelector(`.sec[data-key="${k}"]`);
+  if(el) el.classList.toggle('collapsed',!secState[k]);
+}
+function refreshCounts(){
+  const g=state.geno;
+  const set=(id,n)=>{ const e=document.getElementById(id); if(e) e.textContent=n||''; };
+  set('cntMem',g.persons.length); set('cntUni',g.unions.length);
+  set('cntTie',g.ties.length); set('cntCir',g.circles.length);
+  if(editMode==='matrix' && document.getElementById('matrixWrap')?.style.display!=='none'
+     && !document.getElementById('mxPop')) buildMatrix();
+}
+
+/* ===================== 關係矩陣 ===================== */
+let editMode='form';
+function setEditMode(m){
+  editMode=m;
+  mFormBtn.classList.toggle('on',m==='form');
+  mMatrixBtn.classList.toggle('on',m==='matrix');
+  mImportBtn?.classList.toggle('on',m==='import');
+  formWrap.style.display = m==='form'?'':'none';
+  matrixWrap.style.display = m==='matrix'?'':'none';
+  importWrap.style.display = m==='import'?'':'none';
+  if(m==='matrix') buildMatrix();
+  if(m==='import') detectAI();
+}
+
+/* ===================== 逐字稿擷取（規則式，離線） ===================== */
+/* 稱謂字典：關鍵詞 → {gender, gen, role}  gen 0=祖父母代 1=父母代 2=案主代 3=子女代 */
+const ROLE_DICT=[
+  // 祖父母代
+  {kw:['祖父','爺爺','阿公'],g:'male',gen:0,index:false},
+  {kw:['祖母','奶奶','阿嬤','阿媽'],g:'female',gen:0,index:false},
+  {kw:['外公','外祖父'],g:'male',gen:0,index:false},
+  {kw:['外婆','外祖母'],g:'female',gen:0,index:false},
+  // 父母代（案主的父母／配偶的父母）
+  {kw:['案父親','個案父親','案主父','案父'],g:'male',gen:1,index:false,canon:'案父'},
+  {kw:['案母親','個案母親','案主母','案母'],g:'female',gen:1,index:false,canon:'案母'},
+  {kw:['父親','爸爸'],g:'male',gen:1,index:false,soft:true},
+  {kw:['母親','媽媽'],g:'female',gen:1,index:false,soft:true},
+  {kw:['岳父','公公'],g:'male',gen:1,index:false},
+  {kw:['岳母','婆婆'],g:'female',gen:1,index:false},
+  {kw:['繼父'],g:'male',gen:1,index:false},
+  {kw:['繼母'],g:'female',gen:1,index:false},
+  {kw:['姑姑','姑媽','阿姨','舅舅','伯父','叔叔','舅媽','嬸嬸'],g:null,gen:1,index:false},
+  // 案主代
+  {kw:['案主','個案','當事人','服務對象'],g:null,gen:2,index:true},
+  {kw:['案妻'],g:'female',gen:2,index:false},
+  {kw:['案夫'],g:'male',gen:2,index:false},
+  {kw:['配偶','太太','老婆','妻子'],g:'female',gen:2,index:false,soft:true},
+  {kw:['先生','丈夫','老公'],g:'male',gen:2,index:false,soft:true},
+  {kw:['前妻'],g:'female',gen:2,index:false},
+  {kw:['前夫'],g:'male',gen:2,index:false},
+  {kw:['同居人','伴侶','男友','女友'],g:null,gen:2,index:false},
+  {kw:['案兄','哥哥','案弟','弟弟'],g:'male',gen:2,index:false},
+  {kw:['案姊','案姐','姊姊','姐姐','案妹','妹妹'],g:'female',gen:2,index:false},
+  // 子女代
+  {kw:['長子','次子','三子','四子','案子','兒子','長男','次男','獨子','大兒子','小兒子'],g:'male',gen:3,index:false},
+  {kw:['長女','次女','三女','四女','么女','女兒','獨女','一女','大女兒','小女兒'],g:'female',gen:3,index:false},
+  {kw:['孫子','外孫'],g:'male',gen:3,index:false},
+  {kw:['孫女','外孫女'],g:'female',gen:3,index:false},
+  {kw:['小孩','孩子','子女','幼子'],g:null,gen:3,index:false},
+];
+const UNI_KW=[
+  {re:/離婚/,type:'divorced'},{re:/分居/,type:'separated'},
+  {re:/同居|交往/,type:'cohabit'},{re:/結婚|已婚|夫妻|成婚|婚配/,type:'married'},
+];
+const TIE_KW=[
+  {re:/衝突|吵架|不合|對立|爭執|緊張|關係不好|關係差|處不來|關係惡劣/,type:'conflict'},
+  {re:/關係惡化|惡化/,type:'worsening'},
+  {re:/溝通中斷|斷絕|不相往來|不聯絡|不往來/,type:'cutoff'},
+  {re:/疏遠|疏離|冷淡|不親/,type:'distant'},
+  {re:/過度親密|糾結/,type:'fused'},
+  {re:/親密|要好|感情好|親近|緊密/,type:'close'},
+];
+const norm=t=>{
+  t=String(t)
+    .replace(/案父母/g,'案父與案母').replace(/岳父母/g,'岳父與岳母')
+    .replace(/祖父母/g,'祖父與祖母').replace(/外祖父母/g,'外公與外婆')
+    .replace(/(?<![案岳個])父母(?!親)/g,'案父與案母');   // 單獨「父母」視為案父母
+  return t.replace(/[ \t]+/g,'').replace(/[。；;!?！？\n]+/g,'\n')
+    .split('\n').map(x=>x.trim()).filter(Boolean).join('\n');
+};
+function matchRole(seg){
+  // 找出這段文字裡出現的第一個稱謂（較長的優先）
+  let best=null,bestLen=0,bestPos=1e9;
+  ROLE_DICT.forEach(r=>r.kw.forEach(k=>{
+    const pos=seg.indexOf(k);
+    if(pos>-1 && (k.length>bestLen || (k.length===bestLen && pos<bestPos))){
+      best={role:k,...r}; bestLen=k.length; bestPos=pos;
+    }
+  }));
+  return best;
+}
+function grabAge(seg){
+  const m=seg.match(/(\d{1,3})\s*歲/) || seg.match(/(\d{2,3})\s*年次/);
+  return m?m[1]:'';
+}
+
+let parseResult=null;
+function runParse(){
+  const raw=document.getElementById('impText').value.trim();
+  if(!raw){ toast('請先貼上逐字稿'); return; }
+  parseResult=parseTranscript(raw);
+  renderParseResult(parseResult);
+}
+function parseTranscript(raw){
+  const found=new Map();   // role名 → {name,g,gen,index,age}
+  const rels=[];
+  const text=norm(raw);
+  const lines=text.split('\n').filter(Boolean);
+  // 子句：逗號、頓號、換行都切開，讓「A與B結婚」不會跨到別的子句
+  const clauses=[]; lines.forEach(l=>l.split(/[，,、]/).forEach(c=>{ c=c.trim(); if(c) clauses.push(c); }));
+
+  const dictSorted=[]; ROLE_DICT.forEach(r=>r.kw.forEach(k=>dictSorted.push({k,...r})));
+  dictSorted.sort((a,b)=>b.k.length-a.k.length);
+
+  /* 掃出某段文字裡的角色（長詞優先，位置去重：短詞若落在長詞範圍內就略過） */
+  function rolesIn(seg){
+    const taken=[]; const hits=[];
+    dictSorted.forEach(({k,soft})=>{
+      let i=seg.indexOf(k);
+      while(i>-1){
+        const overlap=taken.some(([s,e])=>i<e && i+k.length>s);
+        if(!overlap){ const meta=dictSorted.find(d=>d.k===k);
+          hits.push({pos:i,k:(meta&&meta.canon)?meta.canon:k,soft}); taken.push([i,i+k.length]); }
+        i=seg.indexOf(k,i+1);
+      }
+    });
+    return hits.sort((a,b)=>a.pos-b.pos);
+  }
+
+  // 第一輪成員：掃全文，非 soft 才建成員
+  rolesIn(text).forEach(({k,soft})=>{
+    const meta=dictSorted.find(d=>d.k===k) || dictSorted.find(d=>d.canon===k);
+    if(!soft && !found.has(k)) found.set(k,{name:k,g:meta.g,gen:meta.gen,index:meta.index,age:''});
+  });
+
+  // 年齡：逐子句，歲數歸給左邊最近的成員
+  clauses.forEach(seg=>{
+    const rh=rolesIn(seg).filter(h=>found.has(h.k));
+    const ax=/(\d{1,3})\s*歲/g; let am;
+    while((am=ax.exec(seg))){
+      let best=null; rh.forEach(h=>{ if(h.pos<=am.index) best=h.k; });
+      if(best && !found.get(best).age) found.get(best).age=am[1];
+    }
+  });
+
+  // 關係：逐行走訪其子句，維護「本行最近兩個角色」供代名詞（兩人／雙方）回指
+  const idxName=[...found.values()].find(m=>m.index)?.name;
+  lines.forEach(line=>{
+    const subs=line.split(/[，,、]/);
+    let recent=[];   // 本行最近出現的角色（依序）
+    subs.forEach(seg=>{
+      const clean=seg.replace(/（[^）]*）|\([^)]*\)/g,'').replace(/\d{1,3}\s*歲/g,'');
+      let hits=rolesIn(clean).filter(h=>found.has(h.k));
+      hits.forEach(h=>{ if(!recent.includes(h.k)) recent.push(h.k); });
+      const hasVerb=[...UNI_KW,...TIE_KW].some(x=>x.re.test(clean));
+      const pron=/兩人|雙方|彼此|兩造|夫妻倆|兩個人/.test(clean);
+      // 代名詞回指：用本行最後兩個角色
+      if(hits.length<2 && pron && recent.length>=2){
+        const last2=recent.slice(-2);
+        hits=[{pos:0,k:last2[0]},{pos:1,k:last2[1]}];
+      }
+      // 省略主詞：只有一角色但有動詞 → 補案主
+      if(hits.length===1 && hasVerb && idxName && hits[0].k!==idxName){
+        hits=[{pos:-1,k:idxName},hits[0]];
+      }
+      if(hits.length<2) return;
+      const attach=(re,type,kind)=>{
+        let m; const rx=new RegExp(re,'g');
+        while((m=rx.exec(clean))){
+          const vp=m.index;
+          const left=hits.filter(h=>h.pos<vp), right=hits.filter(h=>h.pos>vp);
+          let a,b;
+          if(hits.length===2){ a=hits[0].k; b=hits[1].k; }        // 代名詞/補主詞情形
+          else if(left.length>=2){ a=left[left.length-2].k; b=left[left.length-1].k; }
+          else if(left.length===1 && right.length>=1){ a=left[0].k; b=right[0].k; }
+          else if(right.length>=2){ a=right[0].k; b=right[1].k; }
+          else continue;
+          if(a!==b) rels.push({a,b,type,kind});
+        }
+      };
+      UNI_KW.forEach(u=>attach(u.re.source,u.type,'uni'));
+      TIE_KW.forEach(t=>attach(t.re.source,t.type,'tie'));
+    });
+  });
+  // 去重：同一對成員的婚姻留一種、情感留一種
+  const pick=new Map();
+  rels.forEach(r=>pick.set([r.a,r.b].sort().join()+'|'+r.kind, r));
+  const finalRels=[...pick.values()];
+
+  // 多胞胎／多子：「兩子」「雙胞胎」「各N歲」— 若只抓到一個子女但文中提到複數，複製一份
+  const members=[...found.values()];
+  const multiKid=/兩|二|雙胞胎|龍鳳胎|三胞胎|2名|兩名|兩個/.test(text);
+  const kids=members.filter(m=>m.gen===3);
+  if(multiKid && kids.length===1){
+    const k=kids[0];
+    members.push({name:k.name+'（次）',g:k.g,gen:3,index:false,age:k.age});
+    members[members.indexOf(k)]={...k,name:k.name+'（長）'};
+  }
+  return {members, rels:finalRels};
+}
+function renderParseResult(res){
+  const box=document.getElementById('impResult');
+  if(!res.members.length){
+    box.innerHTML=`<div class="imp-card">沒有辨識到明確的家庭稱謂。可試著用「案主」「案母」「長子」等社工常用稱謂，或直接到表格手動新增。</div>`;
+    return;
+  }
+  const genName={0:'祖父母代',1:'父母代',2:'案主代',3:'子女代'};
+  let h=`<div class="imp-card"><h4>辨識到 ${res.members.length} 位成員</h4><div class="imp-found">`;
+  res.members.forEach(m=>{
+    const gtxt=m.g==='male'?'♂':m.g==='female'?'♀':'?';
+    h+=`<span class="imp-chip">${esc(m.name)} ${gtxt}${m.age?' '+m.age+'歲':''}${m.index?' ⭑案主':''}</span>`;
+  });
+  h+=`</div>`;
+  if(res.rels.length){
+    h+=`<h4 style="margin-top:10px">辨識到 ${res.rels.length} 組關係</h4><div class="imp-found">`;
+    res.rels.forEach(r=>{
+      const lb=r.kind==='uni'?UNI_LABEL[r.type]:TIE_LABEL[r.type];
+      h+=`<span class="imp-chip ${r.kind==='uni'?'rel':'tie'}">${esc(r.a)} — ${lb} — ${esc(r.b)}</span>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`<div class="imp-apply">
+        <button class="btn primary" onclick="applyParse(true)">套用（清空後重建）</button>
+        <button class="btn" onclick="applyParse(false)">併入現有資料</button>
+      </div>
+      <p class="hint" style="margin-top:6px">預設會清空目前畫面、以這份逐字稿重新建立，避免和範例或舊資料混在一起。<br>只有想把兩份稿合起來時才用「併入現有資料」。</p></div>`;
+  box.innerHTML=h;
+}
+function applyParse(fresh=true){
+  if(!parseResult) return;
+  snapshot();
+  if(fresh){
+    state.geno={persons:[],unions:[],ties:[],circles:[]};
+    uid=Math.max(uid, 100000);   // 避免與被清掉的舊 id 相衝
+  }
+  const idmap={};   // role名 → person.id
+  // 若已存在同名成員就沿用，避免重複
+  parseResult.members.forEach(m=>{
+    let ex=state.geno.persons.find(p=>p.name===m.name);
+    if(!ex){ addPerson({name:m.name,gender:m.g||'male',age:m.age,index:m.index}); ex=state.geno.persons.at(-1); }
+    else { if(m.age&&!ex.age) ex.age=m.age; if(m.index) ex.index=true; }
+    idmap[m.name]=ex.id;
+  });
+  // 關係
+  parseResult.rels.forEach(r=>{
+    const a=idmap[r.a], b=idmap[r.b]; if(!a||!b||a===b) return;
+    if(r.kind==='uni' && !findUnion(a,b)) addUnion({a,b,type:r.type});
+    if(r.kind==='tie' && !findTie(a,b))   addTie({a,b,type:r.type});
+  });
+  const byName=n=>state.geno.persons.find(p=>p.name===n);
+  const idxP=state.geno.persons.find(p=>p.index);
+  const SPOUSE={'案主':['案妻','案夫','配偶'],'案妻':['案主'],'案夫':['案主']};
+  // 推論：案主與其配偶若沒有婚姻關係，補一段（有育有子女時尤其需要）
+  const spouseName=(SPOUSE[idxP?.name]||[]).map(byName).find(Boolean);
+  if(idxP){
+    const sp=state.geno.persons.find(p=>['案妻','案夫','配偶'].includes(p.name));
+    if(sp && !findUnion(idxP.id,sp.id)) addUnion({a:idxP.id,b:sp.id,type:'married'});
+  }
+  // 親子：子女優先掛到「含案主的婚姻」，其次父母代婚姻
+  const kids=parseResult.members.filter(m=>m.gen===3);
+  const idxUnion=state.geno.unions.find(u=>{ const A=P(u.a),B=P(u.b);
+    return A&&B&&(A.index||B.index); });
+  const parentUnion=state.geno.unions.find(u=>{ const A=P(u.a),B=P(u.b);
+    return A&&B&&A.gen<=1&&B.gen<=1; });
+  const anchor=idxUnion||parentUnion||state.geno.unions[0];
+  if(anchor){
+    kids.forEach(k=>{ const kid=byName(k.name);
+      if(kid && kid.id!==anchor.a && kid.id!==anchor.b && !anchor.children.some(c=>c.id===kid.id))
+        anchor.children.push({id:kid.id,link:'birth',twin:false});
+    });
+  }
+  autoLayout(); syncUI(); render();
+  setEditMode('matrix');
+  offerUndo(`已套用：成員 ${state.geno.persons.length}、關係已填入`);
+}
+
+/* ---- 第二種：瀏覽器內建 AI（有才啟用） ---- */
+async function getAImodel(){
+  // 兼容多種 Chrome/Edge 內建 AI API 版本
+  try{
+    if(window.LanguageModel){
+      const av=await window.LanguageModel.availability?.();
+      if(av && av!=='unavailable') return {api:window.LanguageModel,kind:'new'};
+    }
+  }catch(e){}
+  try{
+    if(window.ai?.languageModel){
+      const cap=await window.ai.languageModel.capabilities?.();
+      if(cap && cap.available && cap.available!=='no') return {api:window.ai.languageModel,kind:'old'};
+    }
+  }catch(e){}
+  return null;
+}
+async function detectAI(){
+  const note=document.getElementById('aiNote'), btn=document.getElementById('aiBtn');
+  const m=await getAImodel();
+  if(m){ btn.style.display=''; btn.disabled=false; btn.textContent='✨ 用瀏覽器 AI 加強';
+    note.innerHTML='偵測到瀏覽器內建 AI，可用「AI 加強」處理較口語、複雜的描述——一樣完全在本機執行，不會上傳。'; }
+  else { btn.style.display='none';
+    note.innerHTML='目前瀏覽器沒有可用的內建 AI（需 Chrome／Edge 新版並開啟內建模型）。規則式解析仍可正常使用，這不影響主要功能，遇到較口語的逐字稿可手動於表格補正。'; }
+}
+async function runAIParse(){
+  const raw=document.getElementById('impText').value.trim();
+  if(!raw){ toast('請先貼上逐字稿'); return; }
+  const btn=document.getElementById('aiBtn');
+  const reset=()=>{ btn.disabled=false; btn.textContent='✨ 用瀏覽器 AI 加強'; };
+  btn.disabled=true; btn.textContent='AI 解析中…';
+  // 保底：15 秒沒回應就恢復按鈕，不讓它卡死
+  const guard=setTimeout(()=>{ reset(); toast('AI 逾時，已改用規則式結果'); }, 15000);
+  let session=null;
+  try{
+    const m=await getAImodel();
+    if(!m){ throw new Error('no model'); }
+    session=await m.api.create();
+    const prompt=`你是社工助理。從逐字稿抽取家庭成員與關係，只輸出 JSON，不要任何說明文字。
+格式：{"members":[{"name":"稱謂","gender":"male|female|unknown","age":"數字或空","index":true/false}],"relations":[{"a":"稱謂","b":"稱謂","kind":"uni|tie","type":"..."}]}
+type 婚姻類：married,divorced,separated,cohabit；情感類：close,fused,conflict,closeconflict,worsening,cutoff,distant。
+index 為 true 代表案主。同一人只能出現一次。稱謂用「案主/案妻/案父/案母/長子/次子」等。
+逐字稿：
+${raw}`;
+    const out=await session.prompt(prompt);
+    clearTimeout(guard);
+    let txt=String(out).replace(/```json|```/g,'').trim();
+    const s0=txt.indexOf('{'), s1=txt.lastIndexOf('}');
+    if(s0>-1&&s1>-1) txt=txt.slice(s0,s1+1);
+    const json=JSON.parse(txt);
+    // AI 結果視為新的一份（比規則更完整時取代），但保留規則已抓到、AI 沒有的
+    const merged={members:[],rels:[]};
+    const GMAP={male:'male',female:'female',unknown:'unknown','男':'male','女':'female'};
+    (json.members||[]).forEach(m=>{
+      if(m.name && !merged.members.some(x=>x.name===m.name))
+        merged.members.push({name:m.name,g:GMAP[m.gender]||'male',
+          gen:guessGen(m.name),index:!!m.index,age:(m.age==null?'':String(m.age))});
+    });
+    (json.relations||[]).forEach(r=>{
+      if(r.a&&r.b&&r.type&&r.a!==r.b) merged.rels.push({a:r.a,b:r.b,type:r.type,kind:r.kind||'uni'});
+    });
+    if(merged.members.length){ parseResult=merged; renderParseResult(parseResult);
+      toast('AI 解析完成'); }
+    else { toast('AI 未抓到成員，維持規則式結果'); }
+  }catch(e){
+    clearTimeout(guard);
+    toast('AI 解析未成功，請用規則式結果或手動補正');
+  }finally{ reset(); if(session?.destroy) try{session.destroy();}catch(e){} }
+}
+function guessGen(name){
+  const r=matchRole(name); return r?r.gen:2;
+}
+const UNI_LABEL={married:'結婚',divorced:'離婚',separated:'分居',cohabit:'同居'};
+const TIE_LABEL={positive:'正向',close:'親密',fused:'過度親密',conflict:'衝突',
+  closeconflict:'衝突又親密',worsening:'惡化',cutoff:'溝通中斷',distant:'疏遠'};
+/* 找兩人之間既有關係 */
+function findUnion(a,b){ return state.geno.unions.find(u=>(u.a===a&&u.b===b)||(u.a===b&&u.b===a)); }
+function findTie(a,b){ return state.geno.ties.find(t=>(t.a===a&&t.b===b)||(t.a===b&&t.b===a)); }
+function childLink(parentUnion,childId){ return parentUnion?.children.find(c=>c.id===childId); }
+/* 某人所屬（作為子女）的婚姻 */
+function unionAsChild(pid){ return state.geno.unions.find(u=>u.children.some(c=>c.id===pid)); }
+
+function buildMatrix(){
+  const ps=state.geno.persons;
+  if(ps.length<2){
+    matrixWrap.innerHTML=`<div class="empty" style="margin:10px">先在「表格」分頁新增至少兩位成員，矩陣才會出現。</div>
+      <div class="mx-tools"><button class="btn sm" onclick="setEditMode('form');addPerson()">＋ 去新增成員</button></div>`;
+    return;
+  }
+  let h=`<div class="mx-tools">
+      <button class="btn sm" onclick="setEditMode('form')">切回表格編輯</button>
+      <span class="ms-hint">點任一格子設定兩人關係</span>
+    </div><div class="mx-scroll"><table class="mx"><thead><tr><th>&nbsp;</th>`;
+  ps.forEach((c,j)=>{ h+=`<th title="${esc(label(c))}">${esc(short(label(c)))}</th>`; });
+  h+=`</tr></thead><tbody>`;
+  ps.forEach((r,i)=>{
+    h+=`<tr><th class="rowh" title="${esc(label(r))}">${esc(label(r))}</th>`;
+    ps.forEach((c,j)=>{
+      if(j>=i){ h+=`<td class="diag"></td>`; return; }   // 只畫下三角
+      const u=findUnion(r.id,c.id), t=findTie(r.id,c.id);
+      // 子女關係：其中一方是另一方＋其配偶的孩子
+      let kidNote='';
+      const ur=unionAsChild(r.id), uc=unionAsChild(c.id);
+      if(ur&&(ur.a===c.id||ur.b===c.id)) kidNote='子女';
+      if(uc&&(uc.a===r.id||uc.b===r.id)) kidNote='子女';
+      const has=u||t||kidNote;
+      let inner='<div class="mx-cellbox">';
+      if(u) inner+=`<span class="mx-tag uni">${UNI_LABEL[u.type]}</span>`;
+      if(t) inner+=`<span class="mx-tag tie">${TIE_LABEL[t.type]}</span>`;
+      if(kidNote) inner+=`<span class="mx-tag kid">${kidNote}</span>`;
+      inner+='</div>';
+      h+=`<td class="cell ${has?'hasrel':''}" onclick="openCell(event,'${r.id}','${c.id}')">${has?inner:''}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table></div>
+    <div class="mx-legend"><b>藍</b>＝婚姻／伴侶　<b>橘</b>＝情感　<b>綠</b>＝親子（在表格的子女欄設定）<br>
+    只需填左下三角；每格代表一對成員。</div>`;
+  matrixWrap.innerHTML=h;
+}
+const short=str=>str.length>4?str.slice(0,3)+'…':str;
+
+let popCell=null;
+function openCell(ev,aId,bId){
+  closePop();
+  const a=P(aId), b=P(bId); if(!a||!b) return;
+  const u=findUnion(aId,bId), t=findTie(aId,bId);
+  const uType=u?u.type:'', tType=t?t.type:'';
+  const pop=document.createElement('div');
+  pop.className='mx-pop'; pop.id='mxPop';
+  pop.innerHTML=`
+    <h4>${esc(label(a))} × ${esc(label(b))}</h4>
+    <div class="grp">婚姻／伴侶
+      <select id="popUni">
+        <option value="">（無）</option>
+        ${Object.entries(UNI_LABEL).map(([k,v])=>`<option value="${k}" ${k===uType?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div class="grp">情感關係
+      <select id="popTie">
+        <option value="">（無）</option>
+        ${Object.entries(TIE_LABEL).map(([k,v])=>`<option value="${k}" ${k===tType?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div class="grp" style="font-size:11px;color:#6b7772">
+      親子關係請用下方「設為子女」，方向依實際血緣。
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button class="btn sm" style="flex:1" onclick="setChild('${aId}','${bId}')">${label(a)}是${label(b)}的孩子</button>
+        <button class="btn sm" style="flex:1" onclick="setChild('${bId}','${aId}')">${label(b)}是${label(a)}的孩子</button>
+      </div>
+    </div>
+    <div class="pop-act">
+      <button class="lnk" onclick="closePop()">取消</button>
+      <button class="lnk ok" onclick="applyCell('${aId}','${bId}')">套用</button>
+    </div>`;
+  document.body.appendChild(pop);
+  const r=ev.currentTarget.getBoundingClientRect();
+  let x=r.right+8, y=r.top;
+  if(x+230>innerWidth) x=r.left-230;
+  if(y+260>innerHeight) y=innerHeight-270;
+  pop.style.left=Math.max(8,x)+'px'; pop.style.top=Math.max(8,y)+'px';
+  popCell={aId,bId};
+  setTimeout(()=>document.addEventListener('pointerdown',popOutside),0);
+}
+function popOutside(e){ if(!e.target.closest('#mxPop')) closePop(); }
+function closePop(){ const p=document.getElementById('mxPop'); if(p) p.remove();
+  document.removeEventListener('pointerdown',popOutside); popCell=null; }
+function applyCell(aId,bId){
+  const uv=document.getElementById('popUni').value;
+  const tv=document.getElementById('popTie').value;
+  // 婚姻
+  let u=findUnion(aId,bId);
+  if(uv){ if(u){ u.type=uv; } else { addUnion({a:aId,b:bId,type:uv}); } }
+  else if(u){ del(state.geno.unions,u.id); }
+  // 情感
+  let t=findTie(aId,bId);
+  if(tv){ if(t){ t.type=tv; } else { addTie({a:aId,b:bId,type:tv}); } }
+  else if(t){ del(state.geno.ties,t.id); }
+  closePop(); buildMatrix(); render();
+}
+function setChild(childId,parentId){
+  // 找 parent 的婚姻；沒有就掛在 parent 的第一段關係，否則提示
+  let u=state.geno.unions.find(x=>x.a===parentId||x.b===parentId);
+  if(!u){ toast(`請先設定 ${label(P(parentId))} 的婚姻／伴侶關係，才能加子女`); return; }
+  if(childId===u.a||childId===u.b){ toast('配偶不能同時是子女'); return; }
+  if(!u.children.some(c=>c.id===childId)) u.children.push({id:childId,link:'birth',twin:false});
+  closePop(); buildMatrix(); autoLayout(); render();
+}
+/* 檢視縮放（純視覺，不影響匯出尺寸） */
+let zoom=1;
+function applyZoom(){
+  const cw=document.getElementById('canvasWrap');
+  if(cw) cw.style.transform=`scale(${zoom})`;
+  const z=document.getElementById('zoomPct'); if(z) z.textContent=Math.round(zoom*100)+'%';
+}
+function zoomBy(d){ zoom=Math.min(3,Math.max(0.3,Math.round((zoom+d)*100)/100)); applyZoom(); }
+function zoomFit(){
+  const st=document.getElementById('stage'), cw=document.getElementById('canvasWrap');
+  const svg=document.getElementById('fig'); if(!svg||!st) return;
+  const availW=st.clientWidth-40, availH=st.clientHeight-80;
+  zoom=Math.min(3,Math.max(0.3, Math.min(availW/SIZE.w, availH/SIZE.h)));
+  applyZoom();
+}
+function removePerson(id){
+  const nm=label(P(id));
+  snapshot();
+  del(state.geno.persons,id);
+  state.geno.unions.forEach(u=>{u.children=u.children.filter(c=>c.id!==id);});
+  state.geno.unions=state.geno.unions.filter(u=>P(u.a)&&P(u.b));
+  state.geno.ties=state.geno.ties.filter(t=>P(t.a)&&P(t.b));
+  state.geno.circles.forEach(c=>{c.members=c.members.filter(m=>m!==id);});
+  syncUI();
+  offerUndo(`已刪除「${nm}」`);
+}
+
+/* ===================== 排版 ===================== */
+function sortedKids(u){
+  const ks=u.children.slice();
+  if(!optSort.checked) return ks;
+  return ks.sort((a,b)=>{
+    const A=seniority(P(a.id)), B=seniority(P(b.id));
+    if(A===null&&B===null) return 0;
+    if(A===null) return 1;
+    if(B===null) return -1;
+    return B-A;                       // 長→幼，由左至右
+  });
+}
+function computeGeno(){
+  const ps=state.geno.persons, us=state.geno.unions;
+  if(!ps.length) return {w:420,h:300};
+  const gen={}; ps.forEach(p=>gen[p.id]=0);
+  for(let k=0;k<24;k++) us.forEach(u=>{
+    if(!P(u.a)||!P(u.b)) return;
+    const g=Math.max(gen[u.a]||0,gen[u.b]||0);
+    gen[u.a]=g; gen[u.b]=g;
+    u.children.forEach(c=>{ if(gen[c.id]!==undefined) gen[c.id]=Math.max(gen[c.id],g+1); });
+  });
+  ps.forEach(p=>{ const g=gen[p.id]||0;
+    if(p.gen!==g && !p.pinned){ p.x=null; p.y=null; }
+    p.gen=g; });
+
+  const childOf={}; us.forEach(u=>u.children.forEach(c=>childOf[c.id]=u));
+  const seen=new Set(), order={};
+  const push=p=>{ (order[p.gen]||=[]).push(p.id); };
+  function visit(pid){
+    const p=P(pid); if(!p||seen.has(pid)) return;
+    const myUs=us.filter(u=>P(u.a)&&P(u.b)&&(u.a===pid||u.b===pid));
+    seen.add(pid);
+    const pushSp=u=>{ const sp=P(u.a===pid?u.b:u.a);
+      if(sp&&!seen.has(sp.id)){ seen.add(sp.id); push(sp); } };
+    if(myUs.length>1){          // 多段婚姻：第一任在左、本人居中、其後在右
+      pushSp(myUs[0]); push(p);
+      myUs.slice(1).forEach(pushSp);
+      myUs.forEach(u=>sortedKids(u).forEach(c=>visit(c.id)));
+    }else{
+      push(p);
+      myUs.forEach(u=>{ pushSp(u); sortedKids(u).forEach(c=>visit(c.id)); });
+    }
+  }
+  ps.filter(p=>!childOf[p.id]).forEach(p=>visit(p.id));
+  ps.forEach(p=>visit(p.id));
+
+  const fresh=ps.some(p=>p.x===null);
+  if(fresh) ps.forEach(p=>{ if(!p.pinned) p.x=null; });
+  Object.values(order).forEach(list=>list.forEach((id,i)=>{
+    const p=P(id); if(p.x===null) p.x=i*GEN.SLOT;
+  }));
+  ps.forEach(p=>{ if(!p.pinned) p.y=p.gen*GEN.GENH+GEN.MARGIN+GEN.NH/2; });
+
+  const maxGen=Math.max(...ps.map(p=>p.gen));
+  if(fresh) for(let pass=0;pass<5;pass++){
+    for(let g=maxGen;g>=0;g--){
+      us.forEach(u=>{
+        const a=P(u.a),b=P(u.b);
+        if(!a||!b||a.gen!==g||!u.children.length||a.pinned||b.pinned) return;
+        const xs=u.children.map(c=>P(c.id)?.x).filter(v=>v!=null);
+        if(!xs.length) return;
+        const sh=(Math.min(...xs)+Math.max(...xs))/2-(a.x+b.x)/2;
+        a.x+=sh; b.x+=sh;
+      });
+      const list=(order[g]||[]).map(P).filter(Boolean).sort((m,n)=>m.x-n.x);
+      for(let i=1;i<list.length;i++){
+        const gap=(nodeScale(list[i-1])+nodeScale(list[i]))/2*GEN.NW + (GEN.SLOT-GEN.NW);
+        const need=list[i-1].x+gap;
+        if(list[i].x<need&&!list[i].pinned) list[i].x=need;
+      }
+    }
+  }
+  if(fresh){
+    const minX=Math.min(...ps.map(p=>p.x));
+    const sh=GEN.MARGIN+GEN.NW/2-minX;
+    if(Math.abs(sh)>0.5) ps.forEach(p=>p.x+=sh);
+  }
+  const w=Math.max(...ps.map(p=>p.x))+GEN.MARGIN+GEN.NW/2;
+  const h=Math.max(...ps.map(p=>p.y))+GEN.MARGIN+GEN.NH;
+  return {w:Math.max(w,420),h:Math.max(h,320)};
+}
+
+/* ===================== 圖元 ===================== */
+const D=[];
+const clearD=()=>D.length=0;
+const shape=o=>D.push(Object.assign({k:'shape',stroke:INK,sw:2,fill:'none'},o));
+const line =o=>D.push(Object.assign({k:'line',stroke:INK,sw:2},o));
+const text =o=>D.push(Object.assign({k:'text',color:INK,w:110,bold:false},o,
+  {size:(o.abs?o.size:(o.size??13)*FS()), h:(o.h??20)*FS()}));
+
+function zig(x1,y1,x2,y2,o={}){
+  const amp=o.amp??7,dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+  const px=-dy/len,py=dx/len,n=Math.max(4,Math.round(len/16));
+  let pr=[x1,y1];
+  for(let i=1;i<=n;i++){
+    const t=i/n,s=(i===n)?0:(i%2?1:-1)*amp;
+    const cu=[x1+dx*t+px*s,y1+dy*t+py*s];
+    line({x1:pr[0],y1:pr[1],x2:cu[0],y2:cu[1],stroke:o.stroke||INK,sw:o.sw||2});
+    pr=cu;
+  }
+}
+function hatch(x1,y1,x2,y2,o={}){          // 關係惡化：線上加多個小斜線
+  line({x1,y1,x2,y2,sw:1.6,stroke:o.stroke||INK});
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+  const ux=dx/len,uy=dy/len,px=-uy,py=ux,n=5,mid=len/2-((n-1)*9)/2;
+  for(let i=0;i<n;i++){
+    const t=mid+i*9;
+    const cx=x1+ux*t, cy=y1+uy*t;
+    line({x1:cx-ux*4-px*6,y1:cy-uy*4-py*6,x2:cx+ux*4+px*6,y2:cy+uy*4+py*6,
+          sw:1.6,stroke:o.stroke||INK});
+  }
+}
+function trim(x1,y1,x2,y2,r1,r2){
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+  return [x1+dx/len*r1,y1+dy/len*r1,x2-dx/len*r2,y2-dy/len*r2];
+}
+
+/* ---- 生活圈：凸包＋平滑 ---- */
+function hull(pts){
+  const p=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[];
+  for(const q of p){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0) lo.pop(); lo.push(q); }
+  for(let i=p.length-1;i>=0;i--){ const q=p[i];
+    while(up.length>=2&&cr(up[up.length-2],up[up.length-1],q)<=0) up.pop(); up.push(q); }
+  lo.pop(); up.pop();
+  return lo.concat(up);
+}
+function smoothClosed(pts,stroke){
+  const n=pts.length; if(n<3) return;
+  const at=i=>pts[(i%n+n)%n];
+  let prev=null;
+  for(let i=0;i<n;i++){
+    const p0=at(i-1),p1=at(i),p2=at(i+1),p3=at(i+2);
+    for(let s=0;s<8;s++){
+      const t=s/8,t2=t*t,t3=t2*t;
+      const x=0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3);
+      const y=0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3);
+      if(prev) line({x1:prev[0],y1:prev[1],x2:x,y2:y,sw:1.5,stroke,ring:true});
+      prev=[x,y];
+    }
+  }
+  if(prev) line({x1:prev[0],y1:prev[1],x2:pts[0][0],y2:pts[0][1],sw:1.5,stroke,ring:true});
+}
+
+/* ---- 家系圖 ---- */
+function buildGenogram(){
+  const size=computeGeno();
+  const ps=state.geno.persons, us=state.geno.unions;
+  if(!ps.length){
+    text({cx:size.w/2, cy:size.h/2-14, w:size.w-40, h:22, t:'目前沒有任何成員', size:15, color:'#6b7772', bold:true});
+    text({cx:size.w/2, cy:size.h/2+12, w:size.w-40, h:20, t:'從左側「＋新增成員」、上方「範本」或「貼逐字稿」開始', size:12.5, color:'#9aa6a2'});
+    return size;
+  }
+  const HW=GEN.NW/2, HH=GEN.NH/2, col=C();
+
+  /* 生活圈（畫最底層） */
+  state.geno.circles.forEach(c=>{
+    const mem=c.members.map(P).filter(Boolean);
+    if(mem.length<1) return;
+    const pad=20, pts=[];
+    mem.forEach(p=>{
+      const ly=p.y+HH+26;
+      [[-HW-pad,-HH-pad],[HW+pad,-HH-pad],[HW+pad,ly-p.y],[-HW-pad,ly-p.y]]
+        .forEach(([dx,dy])=>pts.push([p.x+dx,p.y+dy]));
+    });
+    const h=hull(pts);
+    if(h.length>=3) smoothClosed(h,col.ring);
+    const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
+    D.push({k:'ringbox',x:Math.min(...xs),y:Math.min(...ys),
+            w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys),stroke:col.ring});
+    const bot=h.reduce((a,b)=>b[1]>a[1]?b:a,h[0]);
+    if(c.label) text({cx:bot[0],cy:bot[1]+13,w:110,h:16,t:c.label,size:11.5,color:col.ring});
+  });
+
+  /* 婚姻與子女 */
+  const seq={};
+  ps.forEach(p=>{ const list=us.filter(u=>P(u.a)&&P(u.b)&&(u.a===p.id||u.b===p.id));
+    if(list.length>1) list.forEach((u,i)=>seq[u.id+':'+p.id]=i+1); });
+  us.forEach(u=>{
+    const a=P(u.a),b=P(u.b); if(!a||!b||a===b) return;
+    const L=a.x<=b.x?a:b, R=a.x<=b.x?b:a, y=(a.y+b.y)/2;
+    const dash=u.type==='cohabit'?'6 4':null;
+    const kids=sortedKids(u).map(c=>({...c,p:P(c.id)})).filter(c=>c.p);
+    const busY=kids.length?Math.min(...kids.map(c=>c.p.y))-HH-34:null;
+
+    /* 線會穿過別人時，改走下方繞線（新關係畫法） */
+    const blocked=ps.some(q=>q!==a&&q!==b&&Math.abs(q.y-y)<GEN.NH*0.7
+      && q.x>L.x+GEN.NW*0.55 && q.x<R.x-GEN.NW*0.55);
+    let mx=(L.x+R.x)/2, markY=y, dropY=y;
+    if(!blocked){
+      line({x1:L.x+HW,y1:y,x2:R.x-HW,y2:y,sw:2,dash});
+    }else{
+      const lx=L.x+HW*0.55, rx=R.x-HW*0.55;
+      let yb=Math.max(L.y,R.y)+HH+30*FS();
+      if(busY!==null) yb=Math.min(yb,busY-12);
+      yb=Math.max(yb,Math.max(L.y,R.y)+HH+10);
+      line({x1:lx,y1:L.y+HH,x2:lx,y2:yb,sw:2,dash});
+      line({x1:lx,y1:yb,x2:rx,y2:yb,sw:2,dash});
+      line({x1:rx,y1:yb,x2:rx,y2:R.y+HH,sw:2,dash});
+      mx=(lx+rx)/2; markY=yb; dropY=yb;
+    }
+    if(u.type==='divorced'){                       // 慣例：線上打 ✕
+      line({x1:mx-8,y1:markY-10,x2:mx+8,y2:markY+10,sw:2});
+      line({x1:mx+8,y1:markY-10,x2:mx-8,y2:markY+10,sw:2});
+    }
+    if(u.type==='separated') line({x1:mx-7,y1:markY+10,x2:mx+7,y2:markY-10,sw:2});
+    [[u.a,a],[u.b,b]].forEach(([pid,per])=>{
+      const n=seq[u.id+':'+pid]; if(!n) return;
+      text({cx:per.x+(mx-per.x)*0.55,cy:markY-13,w:24,h:14,t:String(n),size:11,color:GREY});
+    });
+
+    if(!kids.length) return;
+    line({x1:mx,y1:dropY,x2:mx,y2:busY,sw:2});
+    /* 多胞胎：連續標記者共用頂點 */
+    const groups=[];
+    kids.forEach(c=>{ (c.twin&&groups.length) ? groups[groups.length-1].push(c) : groups.push([c]); });
+    const anchors=groups.map(g=>g.reduce((s,c)=>s+c.p.x,0)/g.length);
+    line({x1:Math.min(...anchors,mx),y1:busY,x2:Math.max(...anchors,mx),y2:busY,sw:2});
+    groups.forEach((g,i)=>{
+      g.forEach(c=>line({x1:anchors[i],y1:busY,x2:c.p.x,y2:c.p.y-HH,sw:2,
+                         dash:c.link==='birth'?null:'6 4'}));
+    });
+  });
+
+  /* 情感關係 */
+  state.geno.ties.forEach(t=>{
+    const a=P(t.a),b=P(t.b); if(!a||!b||a===b) return;
+    const [x1,y1,x2,y2]=trim(a.x,a.y,b.x,b.y,HW+4,HW+4);
+    const s=col.tie;
+    if(t.type==='positive')      line({x1,y1,x2,y2,sw:1.6,stroke:s});
+    else if(t.type==='close')    line({x1,y1,x2,y2,sw:4.5,stroke:s});
+    else if(t.type==='fused')    line({x1,y1,x2,y2,sw:8,stroke:s});
+    else if(t.type==='conflict') zig(x1,y1,x2,y2,{stroke:col.stress});
+    else if(t.type==='closeconflict'){ line({x1,y1,x2,y2,sw:5,stroke:s});
+                                       zig(x1,y1,x2,y2,{amp:5,sw:1.6,stroke:col.stress}); }
+    else if(t.type==='worsening') hatch(x1,y1,x2,y2,{stroke:col.stress});
+    else if(t.type==='distant')   line({x1,y1,x2,y2,sw:1.6,dash:'5 5',stroke:s});
+    else if(t.type==='cutoff'){                    // 溝通中斷 ⊣⊢
+      const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
+      const mx=(x1+x2)/2,my=(y1+y2)/2;
+      line({x1,y1,x2:mx-ux*7,y2:my-uy*7,sw:1.6,stroke:s});
+      line({x1:mx+ux*7,y1:my+uy*7,x2,y2,sw:1.6,stroke:s});
+      [-7,7].forEach(o=>line({x1:mx+ux*o-px*8,y1:my+uy*o-py*8,
+                              x2:mx+ux*o+px*8,y2:my+uy*o+py*8,sw:1.6,stroke:s}));
+    }
+  });
+
+  /* 人物 */
+  const idxStyle=(document.getElementById('optIndex')?.value)||'shade';
+  ps.forEach(p=>{
+    const ns=nodeScale(p), hw=HW*ns, hh=HH*ns;
+    const fill=(p.index&&idxStyle==='shade')?SHADE:'#ffffff';
+    const sw=(p.index&&idxStyle==='red')?3:2;
+    const stroke=(p.index&&idxStyle==='red')?'#D64027':INK;
+    const shp=p.gender==='male'?'rect':(p.gender==='female'?'ellipse':'triangle');
+    shape({shape:shp,x:p.x-hw,y:p.y-hh,w:GEN.NW*ns,h:GEN.NH*ns,fill,sw,stroke});
+    if(p.index&&idxStyle==='double'){                 // 雙框：內縮再畫一層
+      const g=7*ns;
+      shape({shape:shp,x:p.x-hw+g,y:p.y-hh+g,w:GEN.NW*ns-g*2,h:GEN.NH*ns-g*2,sw:1.6,stroke:INK});
+    }
+    if(p.ill){
+      const bs=HW*0.42*ns;
+      const ix=p.gender==='female'?p.x+hw*0.5-bs*0.5:p.x+hw-bs-3*ns;
+      const iy=p.gender==='unknown'?p.y+hh-bs-2*ns:(p.gender==='female'?p.y+hh*0.5-bs:p.y+hh-bs-3*ns);
+      shape({shape:'rect',x:ix,y:iy,w:bs,h:bs,sw:0,stroke:INK,fill:INK});
+    }
+    if(p.dead){
+      line({x1:p.x-hw,y1:p.y-hh,x2:p.x+hw,y2:p.y+hh,sw:2});
+      line({x1:p.x+hw,y1:p.y-hh,x2:p.x-hw,y2:p.y+hh,sw:2});
+    }
+    const shown=displayAge(p), isz=IS()*ns;
+    if(shown){
+      const ay=p.gender==='unknown'?p.y+hh*0.42:p.y;
+      const bw=Math.min(GEN.NW*ns-4,(16+shown.length*11)*isz), bh=22*isz;
+      shape({shape:'rect',x:p.x-bw/2,y:ay-bh/2,w:bw,h:bh,sw:0,stroke:fill,fill});
+      text({cx:p.x,cy:ay,w:GEN.NW*ns-10,t:shown,size:15*isz,bold:true,abs:true});
+    }
+    text({cx:p.x,cy:p.y+hh+16*FS(),w:GEN.SLOT,t:label(p),size:13*FS(),bold:p.index,abs:true});
+  });
+  return size;
+}
+
+/* ---- 生態圖 ---- */
+function buildEcomap(){
+  const sys=state.eco.systems, n=Math.max(sys.length,1), col=C();
+  const CR=ECO.CR, SR=ECO.SR;
+  const R=Math.max(230,40*n+90)+(SR-62)*2.2, w=R*2+CR*3.3, h=R*2+CR*2.6, cx=w/2, cy=h/2;
+  sys.forEach((s,i)=>{ if(!s.pinned){
+    const ang=-Math.PI/2+i*2*Math.PI/n;
+    s.x=cx+R*Math.cos(ang); s.y=cy+R*Math.sin(ang);
+  }});
+  sys.forEach(s=>{
+    const [x1,y1,x2,y2]=trim(cx,cy,s.x,s.y,CR+2,SR+2);
+    const sw=s.strength==='strong'?5:s.strength==='weak'?1.6:2.6;
+    const c=s.stress?col.stress:col.tie;
+    s.stress ? zig(x1,y1,x2,y2,{amp:6,sw,stroke:c})
+             : line({x1,y1,x2,y2,sw,dash:s.strength==='weak'?'7 5':null,stroke:c});
+    if(s.flow!=='none'){
+      const arrow=(ax,ay,bx,by)=>{
+        const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
+        line({x1:bx,y1:by,x2:bx-ux*14+px*8,y2:by-uy*14+py*8,sw:2.4,stroke:c});
+        line({x1:bx,y1:by,x2:bx-ux*14-px*8,y2:by-uy*14-py*8,sw:2.4,stroke:c});
+      };
+      if(s.flow==='in'||s.flow==='both') arrow(x2,y2,x1,y1);
+      if(s.flow==='out'||s.flow==='both') arrow(x1,y1,x2,y2);
+    }
+  });
+  if(!sys.length)
+    text({cx, cy:cy-CR-36, w:w-60, h:20, t:'在左側新增外部系統（學校、醫療、就業、鄰里…）', size:12.5, color:'#9aa6a2'});
+  shape({shape:'ellipse',x:cx-CR,y:cy-CR,w:CR*2,h:CR*2,sw:3.5,fill:'#ffffff'});
+  text({cx,cy:cy-18,w:CR*1.8,h:22,t:state.eco.center||'個案家庭',size:16,bold:true});
+  (state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,4)
+    .forEach((m,i)=>text({cx,cy:cy+8*FS()+i*19*FS(),w:CR*1.8,h:18,t:m,size:12.5,color:'#41504e'}));
+  sys.forEach(s=>{
+    shape({shape:'ellipse',x:s.x-SR,y:s.y-SR,w:SR*2,h:SR*2,sw:2,fill:'#ffffff',
+           stroke:s.stress?col.stress:col.tie});
+    const parts=wrap(s.label||'系統',5);
+    parts.slice(0,3).forEach((t,i)=>
+      text({cx:s.x,cy:s.y-(parts.length-1)*9*FS()+i*18*FS(),w:SR*1.7,h:18,t,size:13,bold:true}));
+  });
+  return {w,h};
+}
+function wrap(s,per){ const o=[]; for(let i=0;i<s.length;i+=per) o.push(s.slice(i,i+per)); return o.length?o:['']; }
+
+/* ---- 圖例 ---- */
+const LGw=()=>Math.round(124*FS()), LRh=()=>Math.round(30*FS());
+const legendItems=()=>state.mode==='genogram'
+  ? [['rect','男'],['ellipse','女'],['tri','不確定／懷孕'],['shade','案主'],['dead','已故'],['ill','身障慢病'],
+     ['solid','結婚'],['dash','同居'],['x','離婚'],['slash','分居'],['adopt','收養'],['twin','多胞胎'],
+     ['thin','正向關係'],['thick','正向親密'],['zig','衝突'],['hatch','關係惡化'],['cut','溝通中斷'],['ring','生活圈']]
+  : [['bold','連結強'],['thin','一般'],['dash','薄弱'],['zig','壓力／衝突'],['arrow','能量流向']];
+function legendMetrics(w){
+  const n=legendItems().length, perRow=Math.max(1,Math.floor((w-40)/LGw()));
+  return {perRow,rows:Math.ceil(n/perRow),h:Math.ceil(n/perRow)*LRh()+22};
+}
+function legend(w,top){
+  const items=legendItems(), {perRow}=legendMetrics(w), col=C(), bx=26;
+  line({x1:bx-6,y1:top,x2:w-20,y2:top,sw:1,stroke:'#d7d2c8'});
+  items.forEach(([k,t],i)=>{
+    const x=bx+(i%perRow)*LGw(), y=top+20+Math.floor(i/perRow)*LRh();
+    const box=(fill)=>shape({shape:'rect',x,y:y-9,w:18,h:18,sw:1.8,fill});
+    if(k==='rect') box('#ffffff');
+    else if(k==='ellipse') shape({shape:'ellipse',x,y:y-9,w:18,h:18,sw:1.8,fill:'#ffffff'});
+    else if(k==='tri') shape({shape:'triangle',x,y:y-9,w:18,h:18,sw:1.8,fill:'#ffffff'});
+    else if(k==='shade'){
+      const st=(document.getElementById('optIndex')?.value)||'shade';
+      if(st==='shade') box(SHADE);
+      else if(st==='red') shape({shape:'rect',x,y:y-9,w:18,h:18,sw:2.2,stroke:'#D64027',fill:'#ffffff'});
+      else { box('#ffffff'); shape({shape:'rect',x:x+3.5,y:y-5.5,w:11,h:11,sw:1.4,stroke:INK}); }
+    }
+    else if(k==='dead'){ box('#ffffff'); line({x1:x,y1:y-9,x2:x+18,y2:y+9,sw:1.5}); line({x1:x+18,y1:y-9,x2:x,y2:y+9,sw:1.5}); }
+    else if(k==='ill'){ box('#ffffff'); shape({shape:'rect',x:x+9,y:y,w:9,h:9,sw:0,stroke:INK,fill:INK}); }
+    else if(k==='solid'||k==='thin') line({x1:x,y1:y,x2:x+26,y2:y,sw:k==='thin'?1.6:2});
+    else if(k==='thick') line({x1:x,y1:y,x2:x+26,y2:y,sw:4.5,stroke:col.tie});
+    else if(k==='bold') line({x1:x,y1:y,x2:x+26,y2:y,sw:5,stroke:col.tie});
+    else if(k==='dash') line({x1:x,y1:y,x2:x+26,y2:y,sw:1.8,dash:'5 4',stroke:col.tie});
+    else if(k==='x'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2});
+                      line({x1:x+8,y1:y-7,x2:x+18,y2:y+7,sw:2}); line({x1:x+18,y1:y-7,x2:x+8,y2:y+7,sw:2}); }
+    else if(k==='slash'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2}); line({x1:x+9,y1:y+7,x2:x+17,y2:y-7,sw:2}); }
+    else if(k==='adopt') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'6 4'});
+    else if(k==='twin'){ line({x1:x+13,y1:y-8,x2:x+3,y2:y+8,sw:1.8}); line({x1:x+13,y1:y-8,x2:x+23,y2:y+8,sw:1.8}); }
+    else if(k==='zig') zig(x,y,x+26,y,{amp:5,stroke:col.stress});
+    else if(k==='hatch') hatch(x,y,x+26,y,{stroke:col.stress});
+    else if(k==='cut'){ line({x1:x,y1:y,x2:x+9,y2:y,sw:1.6}); line({x1:x+17,y1:y,x2:x+26,y2:y,sw:1.6});
+                        [9,17].forEach(o=>line({x1:x+o,y1:y-6,x2:x+o,y2:y+6,sw:1.6})); }
+    else if(k==='ring') shape({shape:'ellipse',x,y:y-8,w:26,h:16,sw:1.5,stroke:col.ring});
+    else if(k==='arrow'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2,stroke:col.tie});
+                          line({x1:x+26,y1:y,x2:x+18,y2:y-5,sw:2,stroke:col.tie});
+                          line({x1:x+26,y1:y,x2:x+18,y2:y+5,sw:2,stroke:col.tie}); }
+    text({cx:x+62*FS(),cy:y,w:64*FS(),h:16,t,size:11.5,color:GREY});
+  });
+}
+
+/* ===================== 渲染 ===================== */
+let SIZE={w:600,h:400};
+function render(){
+  applyScales();
+  clearD();
+  SIZE = state.mode==='genogram' ? buildGenogram() : buildEcomap();
+  if(optLegend.checked){
+    const m=legendMetrics(SIZE.w), top=SIZE.h-10;
+    SIZE.h+=m.h; legend(SIZE.w,top);
+  }
+  let body='';
+  D.forEach(o=>{
+    if(o.k==='shape'){
+      const st=`fill="${o.fill}" stroke="${o.sw?o.stroke:o.fill}" stroke-width="${o.sw}"`;
+      if(o.shape==='rect') body+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" ${st}/>`;
+      if(o.shape==='ellipse') body+=`<ellipse cx="${o.x+o.w/2}" cy="${o.y+o.h/2}" rx="${o.w/2}" ry="${o.h/2}" ${st}/>`;
+      if(o.shape==='triangle') body+=`<polygon points="${o.x+o.w/2},${o.y} ${o.x+o.w},${o.y+o.h} ${o.x},${o.y+o.h}" ${st}/>`;
+    }
+    if(o.k==='line') body+=`<line x1="${o.x1}" y1="${o.y1}" x2="${o.x2}" y2="${o.y2}" stroke="${o.stroke}" stroke-width="${o.sw}" stroke-linecap="round"${o.dash?` stroke-dasharray="${o.dash}"`:''}/>`;
+    if(o.k==='text') body+=`<text x="${o.cx}" y="${o.cy+o.size*0.36}" text-anchor="middle" font-family="Microsoft JhengHei, 微軟正黑體, sans-serif" font-size="${o.size}" fill="${o.color}"${o.bold?' font-weight="700"':''}>${esc(o.t)}</text>`;
+  });
+  let handles='';
+  if(state.mode==='genogram')
+    state.geno.persons.forEach(p=>{ const ns=nodeScale(p);
+      handles+=`<rect class="node" data-id="${p.id}" data-kind="p" x="${p.x-GEN.NW*ns/2}" y="${p.y-GEN.NH*ns/2}" width="${GEN.NW*ns}" height="${GEN.NH*ns}" fill="transparent"/>`; });
+  else
+    state.eco.systems.forEach(s=>handles+=`<circle class="node" data-id="${s.id}" data-kind="s" cx="${s.x}" cy="${s.y}" r="${ECO.SR}" fill="transparent"/>`);
+
+  const bg = optAlpha.checked ? '' : `<rect width="100%" height="100%" fill="#ffffff"/>`;
+  canvasWrap.innerHTML=
+    `<svg id="fig" xmlns="http://www.w3.org/2000/svg" width="${SIZE.w}" height="${SIZE.h}" viewBox="0 0 ${SIZE.w} ${SIZE.h}" style="background:${optAlpha.checked?'repeating-conic-gradient(#eee 0% 25%,#fff 0% 50%) 0 0/16px 16px':'#fff'}">${bg}${body}${handles}</svg>`;
+  bindDrag();
+  refreshCounts();
+  applyZoom();
+  stat.textContent = state.mode==='genogram'
+    ? `成員 ${state.geno.persons.length}　關係 ${state.geno.unions.length}　情感 ${state.geno.ties.length}　生活圈 ${state.geno.circles.length}`
+    : `外部系統 ${state.eco.systems.length}`;
+}
+
+/* ===================== 拖曳 ===================== */
+let drag=null, dragOff={x:0,y:0};
+function svgPoint(e){
+  const svg=document.getElementById('fig'); if(!svg) return null;
+  const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function bindDrag(){
+  document.querySelectorAll('#fig .node').forEach(el=>{
+    el.addEventListener('pointerdown',e=>{
+      drag = el.dataset.kind==='p' ? P(el.dataset.id) : S(el.dataset.id);
+      if(!drag) return;
+      const q=svgPoint(e); if(!q) return;
+      dragOff={x:q.x-drag.x,y:q.y-drag.y}; drag.pinned=true; e.preventDefault();
+    });
+  });
+}
+document.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  const q=svgPoint(e); if(!q) return;
+  drag.x=Math.round(q.x-dragOff.x); drag.y=Math.round(q.y-dragOff.y); render();
+});
+document.addEventListener('pointerup',()=>drag=null);
+document.addEventListener('pointercancel',()=>drag=null);
+
+/* ===================== 匯出 ===================== */
+const stamp=()=>new Date().toISOString().slice(0,10);
+const fname=e=>`${state.mode==='genogram'?'家系圖':'生態圖'}_${stamp()}.${e}`;
+function download(b,n){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=n; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+let toastTimer=null;
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('on'),2800); }
+/* 破壞性操作前先快照，toast 附「復原」按鈕 */
+let undoSnap=null;
+function snapshot(){ undoSnap={g:JSON.stringify(state.geno), e:JSON.stringify(state.eco)}; }
+function offerUndo(msg){
+  const t=document.getElementById('toast');
+  t.innerHTML=esc(msg)+' <button class="undo-btn" onclick="doUndo()">復原</button>';
+  t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('on'),7000);
+}
+function doUndo(){
+  if(!undoSnap) return;
+  state.geno=JSON.parse(undoSnap.g); state.eco=JSON.parse(undoSnap.e); undoSnap=null;
+  document.getElementById('toast').classList.remove('on');
+  setMode(state.mode); syncUI(); toast('已復原');
+}
+function svgString(){
+  const s=document.getElementById('fig').cloneNode(true);
+  s.querySelectorAll('.node').forEach(n=>n.remove());
+  s.removeAttribute('style');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(s);
+}
+function exportSVG(){
+  download(new Blob([svgString()],{type:'image/svg+xml;charset=utf-8'}),fname('svg'));
+  toast(optAlpha.checked?'已下載透明背景 SVG':'已下載 SVG，Word 中右鍵「轉換為圖形」即可編輯');
+}
+function exportPNG(){
+  const url=URL.createObjectURL(new Blob([svgString()],{type:'image/svg+xml;charset=utf-8'}));
+  const img=new Image();
+  img.onload=()=>{
+    const c=document.createElement('canvas'); c.width=SIZE.w*3; c.height=SIZE.h*3;
+    const g=c.getContext('2d');
+    if(!optAlpha.checked){ g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); }
+    g.drawImage(img,0,0,c.width,c.height);
+    c.toBlob(b=>{ download(b,fname('png'));
+      toast(optAlpha.checked?'已下載去背 PNG（3 倍解析度）':'已下載 PNG（3 倍解析度）');
+      URL.revokeObjectURL(url); });
+  };
+  img.onerror=()=>toast('PNG 產生失敗，請改用 SVG 或 PPTX');
+  img.src=url;
+}
+function exportPPTX(){
+  if(typeof PptxGenJS==='undefined'){ toast('PPTX 元件未載入，請連上網路後重新整理'); return; }
+  const pptx=new PptxGenJS(); pptx.layout='LAYOUT_16x9';
+  const slide=pptx.addSlide();
+  const SW=10,SH=5.625,PAD=0.35;
+  const sc=Math.min((SW-PAD*2)/(SIZE.w/96),(SH-PAD*2)/(SIZE.h/96));
+  const ox=(SW-(SIZE.w/96)*sc)/2, oy=(SH-(SIZE.h/96)*sc)/2;
+  const X=v=>ox+v/96*sc, Y=v=>oy+v/96*sc, L=v=>v/96*sc;
+  const hex=c=>{ let h=String(c).replace('#','').toUpperCase();
+    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    return /^[0-9A-F]{6}$/.test(h)?h:'12343B'; };
+  D.forEach(o=>{
+    if(o.k==='shape'){
+      slide.addShape({rect:'rect',ellipse:'ellipse',triangle:'triangle'}[o.shape],{
+        x:X(o.x),y:Y(o.y),w:L(o.w),h:L(o.h),
+        fill:o.fill==='none'?{type:'none'}:{color:hex(o.fill)},
+        line:o.sw?{color:hex(o.stroke),width:Math.max(0.75,o.sw*0.75)}:{color:hex(o.fill),width:0.25}});
+    }
+    if(o.k==='ringbox'){
+      slide.addShape('roundRect',{x:X(o.x),y:Y(o.y),w:L(o.w),h:L(o.h),rectRadius:0.12,
+        fill:{type:'none'},line:{color:hex(o.stroke),width:1}});
+    }
+    if(o.k==='line'){
+      if(o.ring) return;
+      const x1=X(o.x1),y1=Y(o.y1),x2=X(o.x2),y2=Y(o.y2);
+      slide.addShape('line',{x:Math.min(x1,x2),y:Math.min(y1,y2),
+        w:Math.abs(x2-x1)||0.001,h:Math.abs(y2-y1)||0.001,flipH:x2<x1,flipV:y2<y1,
+        line:{color:hex(o.stroke),width:Math.max(0.75,o.sw*0.75),dashType:o.dash?'dash':'solid'}});
+    }
+    if(o.k==='text'){
+      slide.addText(o.t,{x:X(o.cx-o.w/2),y:Y(o.cy-o.h/2),w:L(o.w),h:L(o.h),
+        fontSize:Math.max(8,o.size*sc*0.78),fontFace:'Microsoft JhengHei',
+        color:hex(o.color),bold:!!o.bold,align:'center',valign:'middle',margin:0});
+    }
+  });
+  pptx.writeFile({fileName:fname('pptx')});
+  toast('已下載 PPTX，每個圖形都可在 PowerPoint 中直接編輯');
+}
+function saveJSON(){
+  const opt={age:optAge.value,sort:optSort.checked,legend:optLegend.checked,color:optColor.checked,
+             index:optIndex.value,zoom};
+  download(new Blob([JSON.stringify({v:3,opt,...state},null,2)],{type:'application/json'}),`案家圖資_${stamp()}.json`);
+  toast('已存檔，下次可用「開啟 JSON」續編');
+}
+function loadJSON(inp){
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+    const d=JSON.parse(r.result);
+    state.geno=d.geno; state.eco=d.eco;
+    state.geno.circles ||= [];
+    state.geno.persons.forEach(p=>{ p.ill??=false; p.pinned??=false; delete p.scale; });
+    state.geno.unions.forEach(u=>{ u.children=u.children.map(c=>
+      typeof c==='string'?{id:c,link:'birth',twin:false}:{link:'birth',twin:false,...c}); });
+    if(d.opt){ optAge.value=d.opt.age||'age'; optSort.checked=!!d.opt.sort;
+      if(d.opt.index) optIndex.value=d.opt.index;
+      if(d.opt.zoom){ zoom=d.opt.zoom; }
+      optLegend.checked=!!d.opt.legend; optColor.checked=!!d.opt.color; }
+    uid=99999; setMode(d.mode||'genogram'); syncUI(); toast('已載入檔案');
+  }catch(e){ toast('檔案格式無法辨識'); } };
+  r.readAsText(f); inp.value='';
+}
+
+/* ===================== 範例 ===================== */
+/* ---- 範本選單 ---- */
+function toggleTplMenu(ev){
+  ev.stopPropagation();
+  const m=document.getElementById('tplMenu'); m.classList.toggle('on');
+  if(m.classList.contains('on')) setTimeout(()=>document.addEventListener('pointerdown',closeTplOutside),0);
+}
+function closeTplOutside(e){ if(!e.target.closest('#tplMenu') && !e.target.closest('.tpl-wrap button')){
+  document.getElementById('tplMenu').classList.remove('on');
+  document.removeEventListener('pointerdown',closeTplOutside); } }
+const K=(id,link='birth',twin=false)=>({id,link,twin});
+function loadTemplate(key,quiet){
+  document.getElementById('tplMenu')?.classList.remove('on');
+  document.removeEventListener('pointerdown',closeTplOutside);
+  if(!quiet) snapshot();
+  state.geno={persons:[],unions:[],ties:[],circles:[]};
+  state.eco={center:'個案家庭',members:'',systems:[]};
+  const mk=(name,gender,age,o={})=>{ addPerson({name,gender,age,...o}); return state.geno.persons.at(-1).id; };
+  const U=(a,b,type,children=[])=>state.geno.unions.push({id:nid('u'),a,b,type,children});
+  const T=(a,b,type)=>state.geno.ties.push({id:nid('t'),a,b,type});
+  const names={demo:'示範案例',nuclear:'核心家庭',twogen:'兩代同堂',threegen:'三代同堂',
+    single:'單親家庭',remarry:'重組家庭',grand:'隔代教養',couple:'兩人家庭'};
+
+  if(key==='demo'){
+    const gf=mk('祖父','male','82',{dead:true}), gm=mk('祖母','female','79',{ill:true});
+    const fa=mk('父','male','54'), mo=mk('母','female','51'), au=mk('姑姑','female','49');
+    const si=mk('姊','female','19'), me=mk('小明','male','16',{index:true}), br=mk('弟','male','16');
+    U(gf,gm,'married',[K(fa),K(au)]);
+    U(fa,mo,'divorced',[K(si),K(me),K(br,'birth',true)]);
+    T(me,mo,'close'); T(me,fa,'conflict'); T(si,fa,'cutoff');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[mo,si,me,br]}];
+    state.eco={center:'小明家庭',members:'小明、母、姊、弟',systems:[]};
+    [['學校（導師）','strong',false,'both'],['醫院精神科','normal',false,'in'],
+     ['父親（未同住）','normal',true,'out'],['社會局社工','strong',false,'in'],
+     ['家庭經濟','weak',true,'none'],['同儕','normal',false,'both'],
+     ['里長／鄰里','weak',false,'none']].forEach(([label,strength,stress,flow])=>addSystem({label,strength,stress,flow}));
+  }
+  else if(key==='nuclear'){
+    const h=mk('案主','male','38',{index:true}), w=mk('案妻','female','36');
+    const c1=mk('長子','male','10'), c2=mk('長女','female','7');
+    U(h,w,'married',[K(c1),K(c2)]);
+  }
+  else if(key==='twogen'){
+    const gf=mk('案父','male','66'), gm=mk('案母','female','63');
+    const h=mk('案主','male','40',{index:true}), w=mk('案妻','female','38');
+    const c1=mk('長子','male','12'), c2=mk('次女','female','9');
+    U(gf,gm,'married',[K(h)]);
+    U(h,w,'married',[K(c1),K(c2)]);
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[gf,gm,h,w,c1,c2]}];
+  }
+  else if(key==='threegen'){
+    const gf=mk('祖父','male','78'), gm=mk('祖母','female','75');
+    const fa=mk('案父','male','50'), mo=mk('案母','female','48');
+    const me=mk('案主','male','20',{index:true}), si=mk('案妹','female','17');
+    U(gf,gm,'married',[K(fa)]);
+    U(fa,mo,'married',[K(me),K(si)]);
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[gf,gm,fa,mo,me,si]}];
+  }
+  else if(key==='single'){
+    const h=mk('案父','male','42'), w=mk('案主','female','40',{index:true});
+    const c1=mk('長子','male','14'), c2=mk('次子','male','11');
+    U(h,w,'divorced',[K(c1),K(c2)]);
+    T(w,c1,'close');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[w,c1,c2]}];
+  }
+  else if(key==='remarry'){
+    const ex=mk('前夫','male','45'), w=mk('案主','female','42',{index:true}), h=mk('案夫','male','44');
+    const c1=mk('長女','female','16'), c2=mk('次子','male','6');
+    U(ex,w,'divorced',[K(c1)]);
+    U(w,h,'married',[K(c2)]);
+    state.geno.circles=[{id:nid('c'),label:'現同住',members:[w,h,c1,c2]}];
+  }
+  else if(key==='grand'){
+    const gf=mk('祖父','male','70'), gm=mk('祖母','female','68');
+    const fa=mk('案父','male','44',{dead:true}), mo=mk('案母','female','42');
+    const me=mk('案主','male','12',{index:true});
+    U(gf,gm,'married',[K(fa)]);
+    U(fa,mo,'separated',[K(me)]);
+    T(me,gm,'close');
+    state.geno.circles=[{id:nid('c'),label:'祖孫同住',members:[gf,gm,me]}];
+  }
+  else if(key==='couple'){
+    const h=mk('案主','male','52',{index:true}), w=mk('案妻','female','50');
+    U(h,w,'married',[]);
+    T(h,w,'close');
+  }
+  setMode('genogram'); setEditMode('form'); autoLayout(); syncUI();
+  quiet ? toast('已載入示範案例') : offerUndo(`已載入「${names[key]||''}」範本`);
+}
+(function(){ const f=document.getElementById('wordFig'); if(f) f.innerHTML='<svg viewBox="0 0 320 96" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft JhengHei, sans-serif">  <rect width="320" height="96" fill="#2b2b2b"/>  <!-- 索引標籤列 -->  <g font-size="9" fill="#c9c9c9">    <text x="10" y="16">常用</text><text x="42" y="16">插入</text><text x="74" y="16">繪圖</text>    <text x="106" y="16">設計</text><text x="138" y="16">轉場</text>    <text x="246" y="16" fill="#E8552D" font-weight="700">圖形格式</text>  </g>  <rect x="242" y="20" width="60" height="3" rx="1.5" fill="#E8552D"/>  <!-- 轉換成圖形 按鈕 -->  <rect x="30" y="34" width="52" height="52" rx="6" fill="none" stroke="#E8552D" stroke-width="2"/>  <ellipse cx="46" cy="52" rx="6" ry="10" fill="none" stroke="#7fc4a0" stroke-width="1.6"/>  <ellipse cx="62" cy="52" rx="6" ry="10" fill="none" stroke="#7fc4a0" stroke-width="1.6"/>  <path d="M52 42 q10 -6 14 4" fill="none" stroke="#5aa0d8" stroke-width="1.6"/>  <path d="M66 46 l0 -5 l-5 2 z" fill="#5aa0d8"/>  <text x="56" y="80" font-size="8.5" fill="#e0e0e0" text-anchor="middle">轉換成圖形</text>  <!-- 說明箭頭 -->  <text x="150" y="52" font-size="9" fill="#F4A93C">← 點這裡</text>  <text x="150" y="66" font-size="8" fill="#b9b9b9">先點圖片，</text>  <text x="150" y="78" font-size="8" fill="#b9b9b9">再開「圖形格式」</text></svg>'; })();
+loadTemplate('demo',true);
+</script>
+</body>
+</html>
