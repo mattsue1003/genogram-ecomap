@@ -247,7 +247,64 @@ details.help .body b{color:var(--ink)}
 .undo-btn:hover{background:var(--amber);color:var(--ink)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media (max-width:900px){main{flex-direction:column}#side{width:100%;flex:0 0 auto;max-height:46vh;border-right:0;border-bottom:1px solid var(--line)}}
+.mob-only{display:none!important}
+.hdr-actions{display:contents}
+.tb-more{display:contents}
+.mob-nav{position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;background:var(--ink);
+  border-top:1px solid #35606a;padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.mob-nav button{flex:1;border:0;background:transparent;color:#b9cfd3;padding:12px 0;font-size:15px;
+  font-family:var(--font);border-radius:8px;font-weight:600}
+.mob-nav button.on{background:#1c4a53;color:#fff;box-shadow:inset 0 -3px 0 var(--amber)}
+
+@media (max-width:900px){
+  .mob-only{display:inline-flex!important}
+  .mob-nav.mob-only{display:flex!important}
+  html,body{height:100%}
+  body{overflow:hidden}
+  header{padding:9px 12px;gap:8px;flex-wrap:nowrap;position:relative}
+  header h1{font-size:15px;white-space:nowrap}
+  header .tag{display:none}
+  /* 標題列動作 → 下拉選單 */
+  .hdr-actions{display:none;position:absolute;top:100%;right:8px;z-index:80;background:#fff;border:1px solid var(--line);
+    border-radius:12px;box-shadow:0 10px 30px rgba(18,52,59,.25);padding:8px;width:min(280px,92vw);flex-direction:column;gap:6px}
+  .hdr-actions.on{display:flex}
+  .hdr-actions .btn{width:100%;text-align:left;color:var(--text);background:#fff;border-color:var(--line);padding:11px 12px;font-size:14px}
+  .hdr-actions .btn.primary{color:#fff;background:var(--orange);border-color:var(--orange)}
+  .hdr-actions .tpl-wrap{display:block}
+  .hdr-actions .tpl-wrap>.btn{width:100%}
+  .tpl-menu{left:0;right:0;width:auto}
+  /* 主區：一次只顯示一側，全螢幕 */
+  main{flex-direction:column;height:calc(100% - 52px);padding-bottom:64px}
+  #side,#stage{width:100%;flex:1 1 auto;max-height:none;border:0}
+  body.m-view #side{display:none}
+  body.m-edit #stage{display:none}
+  #side{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #side{padding-bottom:20px}
+  /* 工具列：主要動作一列；次要設定折疊 */
+  .toolbar{padding:8px 10px;gap:6px}
+  .toolbar .t{display:none}
+  .tb-more{display:none;width:100%;flex-wrap:wrap;gap:8px 12px;padding:8px 0 2px;border-top:1px dashed var(--line);margin-top:4px}
+  .tb-more.on{display:flex}
+  .tb-more select{flex:1 1 100%;font-size:14px!important;padding:8px!important}
+  .zoom{margin-left:auto}
+  .zoom .btn{padding:5px 10px}
+  /* 觸控：輸入不觸發 iOS 放大、節點拖曳不捲動頁面 */
+  input[type=text],select,textarea{font-size:16px!important}
+  .node{touch-action:none}
+  #canvasWrap{padding:12px}
+  /* 成員列兩行排版：第一行 編號＋姓名＋刪除，第二行 性別＋年齡 */
+  .row .top{flex-wrap:wrap;row-gap:6px}
+  .row .top .f-name{order:1;flex:1 1 120px}
+  .row .top .del{order:2;margin-left:auto}
+  .row .top select{order:3;flex:1 1 55%}
+  .row .top .f-age{order:4;flex:0 0 78px}
+  #toast{bottom:84px;max-width:92vw;text-align:center}
+  .modeswitch{padding:10px 12px 0;flex-wrap:wrap}
+  .modeswitch .ms-hint{display:none}
+  .sec{padding:12px 12px}
+  #importWrap,#matrixWrap{padding:12px}
+  .mx-scroll{max-height:none}
+}
 </style>
 </head>
 <body>
@@ -256,7 +313,9 @@ details.help .body b{color:var(--ink)}
   <h1>家系圖 <span>×</span> 生態圖 繪製工具</h1>
   <span class="tag">台灣社工符號規範</span>
   <div class="spacer"></div>
-  <button class="btn ghost" onclick="newChart()">＋ 建立新圖</button>
+  <button class="btn ghost mob-only" id="hdrMenuBtn" onclick="toggleHdrMenu(event)">☰ 選單</button>
+  <div class="hdr-actions" id="hdrActions">
+  <button class="btn ghost" onclick="newChart();hdrActions.classList.remove('on')">＋ 建立新圖</button>
   <span class="tpl-wrap">
     <button class="btn ghost" onclick="toggleTplMenu(event)">範本 ▾</button>
     <div id="tplMenu" class="tpl-menu">
@@ -272,12 +331,13 @@ details.help .body b{color:var(--ink)}
       <div class="tpl-note">載入會清空目前畫面。想保留請先「存檔 JSON」。</div>
     </div>
   </span>
-  <button class="btn ghost" onclick="saveJSON()">存檔 JSON</button>
+  <button class="btn ghost" onclick="saveJSON();hdrActions.classList.remove('on')">存檔 JSON</button>
   <button class="btn ghost" onclick="document.getElementById('loadFile').click()">開啟 JSON</button>
   <input type="file" id="loadFile" accept=".json" style="display:none" onchange="loadJSON(this)">
-  <button class="btn ghost" onclick="exportSVG()">下載 SVG</button>
-  <button class="btn ghost" onclick="exportPNG()">下載 PNG</button>
-  <button class="btn primary" onclick="exportPPTX()">下載 PPTX（可編輯）</button>
+  <button class="btn ghost" onclick="exportSVG();hdrActions.classList.remove('on')">下載 SVG</button>
+  <button class="btn ghost" onclick="exportPNG();hdrActions.classList.remove('on')">下載 PNG</button>
+  <button class="btn primary" onclick="exportPPTX();hdrActions.classList.remove('on')">下載 PPTX（可編輯）</button>
+  </div>
 </header>
 
 <main>
@@ -388,7 +448,7 @@ details.help .body b{color:var(--ink)}
         <b>人物</b>：男□／女○／不確定對象或懷孕不知性別△；案主灰底填滿；已故整個打叉；身障或慢性病右下角塗黑。<br>
         <b>婚姻</b>：結婚實線／同居虛線／離婚線上打✕／分居單斜線；多段婚姻標序號。<br>
         <b>子女</b>：親生實線／收養、寄養虛線（實線代表現況法律關係）；多胞胎共用同一頂點。<br>
-        <b>情感</b>：正向細實線／正向親密粗線／過度親密更粗／衝突鋸齒／衝突又親密粗線加鋸齒／關係惡化斜線／溝通中斷⊣⊢／疏遠虛線。<br>
+        <b>情感</b>：正向關係細實線／正向親密粗線／過度親密更粗／衝突鋸齒／衝突又親密粗線加鋸齒／關係惡化斜線／溝通中斷⊣⊢／疏遠點線。<br>
         <b>生活圈</b>：不規則圈，圈內為關係密切者。
         <p class="hint">符號依據：家系圖一般符號代表涵義表、家系圖進階表示法（周瑞德）。</p>
       </div>
@@ -401,11 +461,13 @@ details.help .body b{color:var(--ink)}
       <button class="btn sm" id="btnRedo" onclick="doRedo()" title="重做（Ctrl+Shift+Z）" disabled>↷ 重做</button>
       <span class="tdiv"></span>
       <button class="btn sm" onclick="autoLayout()">重新自動排版</button>
+      <button class="btn sm mob-only" onclick="toggleTbMore()">⚙ 設定</button>
+      <div class="tb-more" id="tbMore">
       <label class="chk"><input type="checkbox" id="optSort" checked onchange="autoLayout()"> 長幼排序</label>
       <label class="chk"><input type="checkbox" id="optLegend" onchange="render()"> 附圖例</label>
       <label class="chk"><input type="checkbox" id="optColor" onchange="render()"> 彩色標示</label>
       <label class="chk"><input type="checkbox" id="optAlpha" onchange="render()"> 透明背景</label>
-      <select id="optAge" onchange="syncUI()" style="font-size:12px;padding:3px 5px">
+      <select id="optAge" onchange="switchAgeMode(this.value)" style="font-size:12px;padding:3px 5px">
         <option value="age">年齡欄：歲數</option>
         <option value="birth">年齡欄：出生年（民國）</option>
         <option value="birthAge">年齡欄：填民國出生年、顯示歲數</option>
@@ -415,6 +477,7 @@ details.help .body b{color:var(--ink)}
         <option value="double">案主：雙框</option>
         <option value="red">案主：紅框（醒目）</option>
       </select>
+      </div>
       <div class="spacer"></div>
       <span class="zoom">檢視
         <button class="btn sm" onclick="zoomBy(-0.1)">－</button>
@@ -427,6 +490,10 @@ details.help .body b{color:var(--ink)}
     <div id="canvasWrap"></div>
   </section>
 </main>
+<nav class="mob-nav mob-only" id="mobNav">
+  <button id="mobEdit" class="on" onclick="mobPane('edit')">✎ 編輯資料</button>
+  <button id="mobView" onclick="mobPane('view')">◫ 看圖</button>
+</nav>
 <div id="toast"></div>
 
 <script>
@@ -600,14 +667,7 @@ function syncUI(){
     <div class="row"><div class="top">
       <select style="flex:1" onchange="setT('${t.id}','a',this.value)">${opts(t.a)}</select>
       <select onchange="setT('${t.id}','type',this.value)">
-        <option value="positive" ${t.type==='positive'?'selected':''}>正向關係</option>
-        <option value="close" ${t.type==='close'?'selected':''}>正向親密</option>
-        <option value="fused" ${t.type==='fused'?'selected':''}>過度親密</option>
-        <option value="conflict" ${t.type==='conflict'?'selected':''}>衝突</option>
-        <option value="closeconflict" ${t.type==='closeconflict'?'selected':''}>衝突又親密</option>
-        <option value="worsening" ${t.type==='worsening'?'selected':''}>關係惡化</option>
-        <option value="cutoff" ${t.type==='cutoff'?'selected':''}>溝通中斷</option>
-        <option value="distant" ${t.type==='distant'?'selected':''}>疏遠</option>
+        ${TIE_ORDER.map(k=>`<option value="${k}" ${t.type===k?'selected':''}>${TIE_LABEL[k]}</option>`).join('')}
       </select>
       <select style="flex:1" onchange="setT('${t.id}','b',this.value)">${opts(t.b)}</select>
       <button class="del" onclick="del(state.geno.ties,'${t.id}')">✕</button>
@@ -1038,8 +1098,10 @@ function guessGen(name){
   const r=matchRole(name); return r?r.gen:2;
 }
 const UNI_LABEL={married:'結婚',divorced:'離婚',separated:'分居',cohabit:'同居'};
-const TIE_LABEL={positive:'正向',close:'親密',fused:'過度親密',conflict:'衝突',
-  closeconflict:'衝突又親密',worsening:'惡化',cutoff:'溝通中斷',distant:'疏遠'};
+/* 情感關係的唯一名稱表：下拉、矩陣、圖例、貼稿結果一律用這裡 */
+const TIE_LABEL={positive:'正向關係',close:'正向親密',fused:'過度親密',conflict:'衝突',
+  closeconflict:'衝突又親密',worsening:'關係惡化',cutoff:'溝通中斷',distant:'疏遠'};
+const TIE_ORDER=['positive','close','fused','conflict','closeconflict','worsening','cutoff','distant'];
 /* 找兩人之間既有關係 */
 function findUnion(a,b){ return state.geno.unions.find(u=>(u.a===a&&u.b===b)||(u.a===b&&u.b===a)); }
 function findTie(a,b){ return state.geno.ties.find(t=>(t.a===a&&t.b===b)||(t.a===b&&t.b===a)); }
@@ -1419,7 +1481,7 @@ function buildGenogram(){
     else if(t.type==='closeconflict'){ line({x1,y1,x2,y2,sw:5,stroke:s});
                                        zig(x1,y1,x2,y2,{amp:5,sw:1.6,stroke:col.stress}); }
     else if(t.type==='worsening') hatch(x1,y1,x2,y2,{stroke:col.stress});
-    else if(t.type==='distant')   line({x1,y1,x2,y2,sw:1.6,dash:'5 5',stroke:s});
+    else if(t.type==='distant')   line({x1,y1,x2,y2,sw:1.6,dash:'2 4',stroke:s});
     else if(t.type==='cutoff'){                    // 溝通中斷 ⊣⊢
       const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
       const mx=(x1+x2)/2,my=(y1+y2)/2;
@@ -1512,7 +1574,9 @@ const LGw=()=>Math.round(124*FS()), LRh=()=>Math.round(30*FS());
 const legendItems=()=>state.mode==='genogram'
   ? [['rect','男'],['ellipse','女'],['tri','不確定／懷孕'],['shade','案主'],['dead','已故'],['ill','身障慢病'],
      ['solid','結婚'],['dash','同居'],['x','離婚'],['slash','分居'],['adopt','收養'],['twin','多胞胎'],
-     ['thin','正向關係'],['thick','正向親密'],['zig','衝突'],['hatch','關係惡化'],['cut','溝通中斷'],['ring','生活圈']]
+     ['thin',TIE_LABEL.positive],['thick',TIE_LABEL.close],['fused',TIE_LABEL.fused],
+     ['zig',TIE_LABEL.conflict],['closezig',TIE_LABEL.closeconflict],['hatch',TIE_LABEL.worsening],
+     ['cut',TIE_LABEL.cutoff],['dot',TIE_LABEL.distant],['ring','生活圈']]
   : [['bold','連結強'],['thin','一般'],['dash','薄弱'],['zig','壓力／衝突'],['arrow','能量流向']];
 function legendMetrics(w){
   const n=legendItems().length, perRow=Math.max(1,Math.floor((w-40)/LGw()));
@@ -1537,6 +1601,9 @@ function legend(w,top){
     else if(k==='ill'){ box('#ffffff'); shape({shape:'rect',x:x+9,y:y,w:9,h:9,sw:0,stroke:INK,fill:INK}); }
     else if(k==='solid'||k==='thin') line({x1:x,y1:y,x2:x+26,y2:y,sw:k==='thin'?1.6:2});
     else if(k==='thick') line({x1:x,y1:y,x2:x+26,y2:y,sw:4.5,stroke:col.tie});
+    else if(k==='fused') line({x1:x,y1:y,x2:x+26,y2:y,sw:8,stroke:col.tie});
+    else if(k==='closezig'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:5,stroke:col.tie}); zig(x,y,x+26,y,{amp:4,sw:1.6,stroke:col.stress}); }
+    else if(k==='dot') line({x1:x,y1:y,x2:x+26,y2:y,sw:1.6,dash:'2 4',stroke:col.tie});
     else if(k==='bold') line({x1:x,y1:y,x2:x+26,y2:y,sw:5,stroke:col.tie});
     else if(k==='dash') line({x1:x,y1:y,x2:x+26,y2:y,sw:1.8,dash:'5 4',stroke:col.tie});
     else if(k==='x'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2});
@@ -1774,7 +1841,7 @@ function loadJSON(inp){
     state.geno.persons.forEach(p=>{ p.ill??=false; p.pinned??=false; delete p.scale; });
     state.geno.unions.forEach(u=>{ u.children=u.children.map(c=>
       typeof c==='string'?{id:c,link:'birth',twin:false}:{link:'birth',twin:false,...c}); });
-    if(d.opt){ optAge.value=d.opt.age||'age'; optSort.checked=!!d.opt.sort;
+    if(d.opt){ optAge.value=d.opt.age||'age'; curAgeMode=optAge.value; optSort.checked=!!d.opt.sort;
       if(d.opt.index) optIndex.value=d.opt.index;
       if(d.opt.zoom){ zoom=d.opt.zoom; }
       optLegend.checked=!!d.opt.legend; optColor.checked=!!d.opt.color; }
@@ -1784,6 +1851,59 @@ function loadJSON(inp){
 }
 
 /* ===================== 範例 ===================== */
+/* ---- 年齡欄位模式切換：自動換算 ---- */
+let curAgeMode='age';
+function switchAgeMode(next){
+  const prev=curAgeMode; if(next===prev) return;
+  const thisYear=new Date().getFullYear(), thisMinguo=thisYear-1911;
+  // 「歲數」↔「出生年」需換算；「出生年」↔「填出生年顯示歲數」儲存值相同，不用換
+  const storesAge=m=>m==='age';
+  if(storesAge(prev)!==storesAge(next)){
+    snapshot();
+    let n=0;
+    state.geno.persons.forEach(p=>{
+      const v=parseFloat(String(p.age||'').trim()); if(isNaN(v)) return;
+      if(storesAge(prev)){                 // 歲數 → 民國出生年
+        const mg=thisMinguo - Math.round(v);
+        if(mg>0){ p.age=String(mg); n++; }
+      }else{                               // 民國出生年（或西元）→ 歲數
+        const west = v>=1911 ? v : v+1911;
+        const ag=thisYear - west;
+        if(ag>=0&&ag<130){ p.age=String(ag); n++; }
+      }
+    });
+    toast(storesAge(next)
+      ? `已依今年（民國 ${thisMinguo} 年）把出生年換算成歲數（${n} 位）`
+      : `已依今年（民國 ${thisMinguo} 年）把歲數換算成民國出生年（${n} 位）`);
+  }
+  curAgeMode=next;
+  optAge.value=next;
+  syncUI(); if(optSort.checked) autoLayout();
+}
+
+/* ---- 手機版：標題選單 / 工具列設定 / 編輯與畫布切換 ---- */
+function toggleHdrMenu(ev){
+  ev.stopPropagation();
+  const m=document.getElementById('hdrActions'); m.classList.toggle('on');
+  if(m.classList.contains('on')) setTimeout(()=>document.addEventListener('pointerdown',closeHdrOutside),0);
+}
+function closeHdrOutside(e){
+  if(e.target.closest('#hdrActions')||e.target.closest('#hdrMenuBtn')) return;
+  document.getElementById('hdrActions').classList.remove('on');
+  document.removeEventListener('pointerdown',closeHdrOutside);
+}
+function toggleTbMore(){ document.getElementById('tbMore').classList.toggle('on'); }
+function mobPane(which){
+  document.body.classList.toggle('m-edit',which==='edit');
+  document.body.classList.toggle('m-view',which==='view');
+  mobEdit.classList.toggle('on',which==='edit');
+  mobView.classList.toggle('on',which==='view');
+  if(which==='view'){ render(); setTimeout(zoomFit,50); }
+}
+const isMobile=()=>window.matchMedia('(max-width:900px)').matches;
+function initMobile(){ if(isMobile()) mobPane('edit'); else document.body.classList.remove('m-edit','m-view'); }
+window.addEventListener('resize',initMobile);
+
 /* ---- 建立新圖（清空成全新空白）---- */
 function newChart(){
   const n=state.geno.persons.length+state.eco.systems.length;
@@ -1891,6 +2011,7 @@ function loadTemplate(key,quiet){
 (function(){ const f=document.getElementById('wordFig'); if(f) f.innerHTML='<svg viewBox="0 0 320 96" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft JhengHei, sans-serif">  <rect width="320" height="96" fill="#2b2b2b"/>  <!-- 索引標籤列 -->  <g font-size="9" fill="#c9c9c9">    <text x="10" y="16">常用</text><text x="42" y="16">插入</text><text x="74" y="16">繪圖</text>    <text x="106" y="16">設計</text><text x="138" y="16">轉場</text>    <text x="246" y="16" fill="#E8552D" font-weight="700">圖形格式</text>  </g>  <rect x="242" y="20" width="60" height="3" rx="1.5" fill="#E8552D"/>  <!-- 轉換成圖形 按鈕 -->  <rect x="30" y="34" width="52" height="52" rx="6" fill="none" stroke="#E8552D" stroke-width="2"/>  <ellipse cx="46" cy="52" rx="6" ry="10" fill="none" stroke="#7fc4a0" stroke-width="1.6"/>  <ellipse cx="62" cy="52" rx="6" ry="10" fill="none" stroke="#7fc4a0" stroke-width="1.6"/>  <path d="M52 42 q10 -6 14 4" fill="none" stroke="#5aa0d8" stroke-width="1.6"/>  <path d="M66 46 l0 -5 l-5 2 z" fill="#5aa0d8"/>  <text x="56" y="80" font-size="8.5" fill="#e0e0e0" text-anchor="middle">轉換成圖形</text>  <!-- 說明箭頭 -->  <text x="150" y="52" font-size="9" fill="#F4A93C">← 點這裡</text>  <text x="150" y="66" font-size="8" fill="#b9b9b9">先點圖片，</text>  <text x="150" y="78" font-size="8" fill="#b9b9b9">再開「圖形格式」</text></svg>'; })();
 loadTemplate('demo',true);
 HIST.past.length=0; HIST.future.length=0; updateHistBtns();   // 初始載入不算一步
+initMobile();
 </script>
 </body>
 </html>
