@@ -150,6 +150,21 @@ main{flex:1;display:flex;min-height:0}
   cursor:pointer;font-size:12.5px;font-family:var(--font);color:var(--text)}
 .tpl-menu button:hover{background:var(--teal-soft);color:var(--ink)}
 .tpl-menu .tpl-note{font-size:10.5px;color:var(--muted);padding:6px 8px 2px;border-top:1px solid #eee8df;margin-top:4px}
+.draft-menu{width:320px}
+.draft-menu .auto{font-size:11.5px;color:var(--teal);padding:6px 8px;display:flex;align-items:center;gap:6px}
+.draft-menu .auto::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--teal)}
+.draft-menu .slot{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px}
+.draft-menu .slot:hover{background:var(--teal-soft)}
+.draft-menu .slot .nm{flex:1;font-size:12.5px;color:var(--text);cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-menu .slot .tm{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.draft-menu .slot .rm{border:0;background:0;color:#c0392b;cursor:pointer;font-size:14px;padding:0 4px}
+.draft-menu .newslot{display:flex;gap:6px;padding:6px 8px}
+.draft-menu .newslot input{flex:1;font-size:12.5px!important;padding:6px 8px!important}
+.draft-menu .empty{margin:6px 8px}
+#resumeBar{display:none;background:#fff7e6;border-bottom:1px solid #f1dfb8;padding:9px 16px;font-size:13px;color:#5a4a1e;align-items:center;gap:10px;flex-wrap:wrap}
+#resumeBar.on{display:flex}
+#resumeBar b{color:var(--ink)}
+#resumeBar .btn{padding:4px 12px}
 .imp-lead{font-size:12.5px;color:#41504e;line-height:1.7;margin:0 0 10px}
 .imp-lead b{color:var(--teal)}
 #impText{width:100%;min-height:150px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--font);font-size:13px;line-height:1.7;resize:vertical}
@@ -219,6 +234,9 @@ input[type=text],select{border:1px solid var(--line);border-radius:5px;padding:5
 .kidrow{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12px}
 .kidrow .nm{flex:1;color:#41504e}
 .warn{font-size:11px;color:#c0392b;margin-top:4px}
+.petrow{font-size:12px;color:#555;margin-top:6px;display:flex;align-items:center;gap:6px}
+.f-note{width:100%;margin-top:6px;font-size:12px!important;color:#555}
+.petrow select{flex:1}
 .empty{font-size:12px;color:var(--muted);padding:8px;text-align:center;border:1px dashed var(--line);border-radius:6px}
 .toolbar{position:sticky;top:0;z-index:4;background:rgba(247,245,241,.94);backdrop-filter:blur(4px);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .toolbar .t{font-size:12px;color:var(--muted)}
@@ -322,23 +340,33 @@ details.help .body b{color:var(--ink)}
       <div class="tpl-head">常見家庭結構（載入後可直接改）</div>
       <button onclick="loadTemplate('demo')">完整示範案例（三代 + 情感 + 生活圈）</button>
       <button onclick="loadTemplate('nuclear')">核心家庭：夫妻 + 子女</button>
-      <button onclick="loadTemplate('twogen')">兩代同堂：父母 + 已婚子女 + 孫</button>
-      <button onclick="loadTemplate('threegen')">三代同堂：祖父母 + 父母 + 子女</button>
+      <button onclick="loadTemplate('twogen')">兩代同堂：案主夫妻與案父母同住（無子女）</button>
+      <button onclick="loadTemplate('threegen')">三代同堂：案父母 + 案主夫妻 + 子女</button>
       <button onclick="loadTemplate('single')">單親家庭：離婚 + 子女</button>
       <button onclick="loadTemplate('remarry')">重組家庭：再婚 + 前段子女</button>
-      <button onclick="loadTemplate('grand')">隔代教養：祖父母 + 孫</button>
+      <button onclick="loadTemplate('grand')">隔代教養：祖父母帶孫（父母離婚未同住）</button>
       <button onclick="loadTemplate('couple')">兩人家庭：夫妻（無子女）</button>
       <div class="tpl-note">載入會清空目前畫面。想保留請先「存檔 JSON」。</div>
     </div>
+  </span>
+  <span class="tpl-wrap">
+    <button class="btn ghost" id="draftBtn" onclick="toggleDraftMenu(event)">暫存 ▾</button>
+    <div id="draftMenu" class="tpl-menu draft-menu"></div>
   </span>
   <button class="btn ghost" onclick="saveJSON();hdrActions.classList.remove('on')">存檔 JSON</button>
   <button class="btn ghost" onclick="document.getElementById('loadFile').click()">開啟 JSON</button>
   <input type="file" id="loadFile" accept=".json" style="display:none" onchange="loadJSON(this)">
   <button class="btn ghost" onclick="exportSVG();hdrActions.classList.remove('on')">下載 SVG</button>
   <button class="btn ghost" onclick="exportPNG();hdrActions.classList.remove('on')">下載 PNG</button>
+  <button class="btn ghost" onclick="exportDOCX();hdrActions.classList.remove('on')">下載 Word</button>
   <button class="btn primary" onclick="exportPPTX();hdrActions.classList.remove('on')">下載 PPTX（可編輯）</button>
   </div>
 </header>
+<div id="resumeBar">
+  <span>偵測到上次在這台電腦編輯、尚未存檔的內容（<b id="resumeTime"></b>）。</span>
+  <button class="btn sm primary" onclick="resumeAuto()">載入繼續編輯</button>
+  <button class="btn sm" onclick="dismissResume()">忽略</button>
+</div>
 
 <main>
   <aside id="side">
@@ -430,9 +458,19 @@ details.help .body b{color:var(--ink)}
       <div class="sec">
         <h2>中心家庭</h2>
         <input type="text" id="ecoCenter" style="width:100%" placeholder="例：王小明家庭"
-               oninput="state.eco.center=this.value;render()">
+               onfocus="snapshot()" oninput="state.eco.center=this.value;render()">
         <input type="text" id="ecoMembers" style="width:100%;margin-top:6px"
-               placeholder="成員，用頓號分隔：王小明、母、姊" oninput="state.eco.members=this.value;render()">
+               placeholder="成員，用頓號分隔：王小明、母、姊" onfocus="snapshot()" oninput="state.eco.members=this.value;render()">
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <button class="btn sm" onclick="importCenterFromGeno(true)">↙ 從家系圖帶入中心家庭</button>
+          <label class="chk"><input type="checkbox" id="optCenterIcons" checked onchange="render()"> 中心圓用符號顯示成員</label>
+        </div>
+        <p class="hint">會取家系圖的案主與「生活圈」同住成員；沒有生活圈時取案主、配偶與子女。帶入後可自行修改。</p>
+      </div>
+      <div class="sec" id="secGenoLink">
+        <h2>家系圖中未同住的親屬</h2>
+        <div id="genoLinkList"></div>
+        <p class="hint">實務上常把未同住的親屬（如離婚的父親、外地的手足）畫成生態圖的外部系統。點「加入」即可。</p>
       </div>
       <div class="sec">
         <h2>外部系統</h2>
@@ -445,7 +483,7 @@ details.help .body b{color:var(--ink)}
     <details class="help">
       <summary>符號對照（依台灣社工慣例）</summary>
       <div class="body">
-        <b>人物</b>：男□／女○／不確定對象或懷孕不知性別△；案主灰底填滿；已故整個打叉；身障或慢性病右下角塗黑。<br>
+        <b>人物</b>：男□／女○／不確定對象或懷孕不知性別△／伴侶動物◇（國際慣例）；案主灰底填滿；已故在符號內打叉；身障或慢性病在符號內右下角塗黑一小塊（台灣符號表畫法；國際 McGoldrick 慣例則是塗左半邊），病名用註記寫在名字下方——家系圖沒有特定疾病的專屬符號。<br>
         <b>婚姻</b>：結婚實線／同居虛線／離婚線上打✕／分居單斜線；多段婚姻標序號。<br>
         <b>子女</b>：親生實線／收養、寄養虛線（實線代表現況法律關係）；多胞胎共用同一頂點。<br>
         <b>情感</b>：正向關係細實線／正向親密粗線／過度親密更粗／衝突鋸齒／衝突又親密粗線加鋸齒／關係惡化斜線／溝通中斷⊣⊢／疏遠點線。<br>
@@ -458,7 +496,7 @@ details.help .body b{color:var(--ink)}
   <section id="stage">
     <div class="toolbar">
       <button class="btn sm" id="btnUndo" onclick="doUndo()" title="復原（Ctrl+Z）" disabled>↶ 復原</button>
-      <button class="btn sm" id="btnRedo" onclick="doRedo()" title="重做（Ctrl+Shift+Z）" disabled>↷ 重做</button>
+      <button class="btn sm" id="btnRedo" onclick="doRedo()" title="把剛才的復原再做回來（Ctrl+Shift+Z）" disabled>↷ 取消復原</button>
       <span class="tdiv"></span>
       <button class="btn sm" onclick="autoLayout()">重新自動排版</button>
       <button class="btn sm mob-only" onclick="toggleTbMore()">⚙ 設定</button>
@@ -511,6 +549,11 @@ const IS = () => 1;               // 圖內文字倍率（固定）
 const nodeScale = () => 1;        // 圖形倍率（固定）
 function applyScales(){}           // 保留呼叫點，不做任何事
 const INK='#12343B', GREY='#6b7772', SHADE='#D9D9D9';
+/* 匯出字型：跟著使用者的作業系統走，讓 Word／PPT 開起來跟預覽一樣 */
+const IS_MAC=/Mac|iPhone|iPad/.test(navigator.platform||'')||/Macintosh/.test(navigator.userAgent||'');
+const EXPORT_FONT = IS_MAC ? 'PingFang TC' : 'Microsoft JhengHei';
+const SVG_FONT = IS_MAC ? 'PingFang TC, Microsoft JhengHei, 微軟正黑體, sans-serif'
+                        : 'Microsoft JhengHei, 微軟正黑體, PingFang TC, sans-serif';
 const C = () => optColor.checked
   ? {tie:'#028090', stress:'#E8552D', ring:'#6b7772'}
   : {tie:INK, stress:INK, ring:GREY};
@@ -578,6 +621,11 @@ const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"
 
 function setMode(m){
   state.mode=m;
+  if(m==='ecomap' && (state.eco.center==='個案家庭'||!state.eco.center) && !state.eco.members
+     && state.geno.persons.some(p=>p.index)){
+    if(importCenterFromGeno(false)) toast('已自動從家系圖帶入中心家庭，可在左側修改');
+  }
+  if(m==='ecomap') renderGenoLink();
   tabG.classList.toggle('on',m==='genogram');
   tabE.classList.toggle('on',m==='ecomap');
   panelG.style.display = m==='genogram'?'':'none';
@@ -592,8 +640,8 @@ function autoLayout(){
 }
 
 /* ===================== 表單 ===================== */
-const opts=(sel)=>`<option value="" disabled ${!P(sel)?'selected':''}>— 選成員 —</option>`+
-  state.geno.persons.map(p=>
+const opts=(sel,allowPet=false)=>`<option value="" disabled ${!P(sel)?'selected':''}>— 選成員 —</option>`+
+  state.geno.persons.filter(p=>allowPet||p.gender!=='pet'||p.id===sel).map(p=>
   `<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(label(p))}</option>`).join('');
 
 function syncUI(){
@@ -612,6 +660,7 @@ function syncUI(){
           <option value="male" ${p.gender==='male'?'selected':''}>男</option>
           <option value="female" ${p.gender==='female'?'selected':''}>女</option>
           <option value="unknown" ${p.gender==='unknown'?'selected':''}>不確定／懷孕</option>
+          <option value="pet" ${p.gender==='pet'?'selected':''}>伴侶動物</option>
         </select>
         <input type="text" class="f-age" placeholder="${agePlaceholder()}" value="${esc(p.age)}"
                title="${ageMode()==='age'?'輸入歲數':'輸入民國出生年（填西元會自動換算）'}"
@@ -626,6 +675,13 @@ function syncUI(){
         onchange="snapshot();P('${p.id}').dead=this.checked;render()"> 已故</label>
       <label class="chk" style="margin-left:8px"><input type="checkbox" ${p.ill?'checked':''}
         onchange="snapshot();P('${p.id}').ill=this.checked;render()"> 身障／慢性病</label>
+      <input type="text" class="f-note" placeholder="註記（例：冠心病、失智、住院中）" value="${esc(p.note||'')}"
+             onfocus="snapshot()" oninput="P('${p.id}').note=this.value;render()">
+      ${p.gender==='pet'?`<div class="petrow">飼主／同住者
+        <select onchange="snapshot();P('${p.id}').owner=this.value;autoLayout()">
+          <option value="" ${!p.owner?'selected':''}>— 選成員 —</option>
+          ${state.geno.persons.filter(q=>q.id!==p.id&&q.gender!=='pet').map(q=>`<option value="${q.id}" ${p.owner===q.id?'selected':''}>${esc(label(q))}</option>`).join('')}
+        </select></div>`:''}
     </div>`).join('') : `<div class="empty">尚未建立成員</div>`;
 
   unionList.innerHTML = state.geno.unions.length ? state.geno.unions.map((u,i)=>`
@@ -645,7 +701,7 @@ function syncUI(){
       ${(!P(u.a)||!P(u.b)||u.a===u.b)?'<div class="warn">↑ 請在兩側各選一位（不同）成員，連線才會出現</div>':''}
       <div class="pick">
         <span class="lbl">子女（點選加入）</span>
-        ${state.geno.persons.filter(p=>p.id!==u.a&&p.id!==u.b).map(p=>
+        ${state.geno.persons.filter(p=>p.id!==u.a&&p.id!==u.b&&p.gender!=='pet').map(p=>
           `<span class="chip ${u.children.some(c=>c.id===p.id)?'on':''}"
                  onclick="toggleKid('${u.id}','${p.id}')">${esc(label(p))}</span>`).join('')
           || '<span class="lbl">（先新增其他成員）</span>'}
@@ -665,11 +721,11 @@ function syncUI(){
 
   tieList.innerHTML = state.geno.ties.length ? state.geno.ties.map(t=>`
     <div class="row"><div class="top">
-      <select style="flex:1" onchange="setT('${t.id}','a',this.value)">${opts(t.a)}</select>
+      <select style="flex:1" onchange="setT('${t.id}','a',this.value)">${opts(t.a,true)}</select>
       <select onchange="setT('${t.id}','type',this.value)">
         ${TIE_ORDER.map(k=>`<option value="${k}" ${t.type===k?'selected':''}>${TIE_LABEL[k]}</option>`).join('')}
       </select>
-      <select style="flex:1" onchange="setT('${t.id}','b',this.value)">${opts(t.b)}</select>
+      <select style="flex:1" onchange="setT('${t.id}','b',this.value)">${opts(t.b,true)}</select>
       <button class="del" onclick="del(state.geno.ties,'${t.id}')">✕</button>
     </div>${(!P(t.a)||!P(t.b)||t.a===t.b)?'<div class="warn">↑ 請在兩側各選一位（不同）成員，連線才會出現</div>':''}</div>`).join('') : `<div class="empty">尚未建立情感連結</div>`;
 
@@ -714,6 +770,7 @@ function syncUI(){
         onchange="S('${s.id}').stress=this.checked;render()"> 此連結帶來壓力／衝突</label>
     </div>`).join('') : `<div class="empty">尚未建立外部系統</div>`;
 
+  renderGenoLink();
   render();
 }
 function setU(id,k,v){
@@ -808,6 +865,7 @@ const ROLE_DICT=[
   {kw:['孫子','外孫'],g:'male',gen:3,index:false},
   {kw:['孫女','外孫女'],g:'female',gen:3,index:false},
   {kw:['小孩','孩子','子女','幼子'],g:null,gen:3,index:false},
+  {kw:['伴侶動物','寵物狗','寵物貓','家犬','家貓','狗狗','貓咪','寵物'],g:'pet',gen:2,index:false},
 ];
 const UNI_KW=[
   {re:/離婚/,type:'divorced'},{re:/分居/,type:'separated'},
@@ -988,7 +1046,8 @@ function applyParse(fresh=true){
   // 若已存在同名成員就沿用，避免重複
   parseResult.members.forEach(m=>{
     let ex=state.geno.persons.find(p=>p.name===m.name);
-    if(!ex){ addPerson({name:m.name,gender:m.g||'male',age:m.age,index:m.index}); ex=state.geno.persons.at(-1); }
+    if(!ex){ addPerson({name:m.name,gender:m.g||'male',age:m.age,index:m.index}); ex=state.geno.persons.at(-1);
+      if(m.g==='pet'){ const idx=state.geno.persons.find(q=>q.index); if(idx) ex.owner=idx.id; } }
     else { if(m.age&&!ex.age) ex.age=m.age; if(m.index) ex.index=true; }
     idmap[m.name]=ex.id;
   });
@@ -1265,6 +1324,7 @@ function computeGeno(){
     gen[u.a]=g; gen[u.b]=g;
     u.children.forEach(c=>{ if(gen[c.id]!==undefined) gen[c.id]=Math.max(gen[c.id],g+1); });
   });
+  ps.forEach(p=>{ if(p.gender==='pet' && p.owner && P(p.owner)) gen[p.id]=gen[p.owner]||0; });
   ps.forEach(p=>{ const g=gen[p.id]||0;
     if(p.gen!==g && !p.pinned){ p.x=null; p.y=null; }
     p.gen=g; });
@@ -1277,13 +1337,15 @@ function computeGeno(){
     const myUs=us.filter(u=>P(u.a)&&P(u.b)&&(u.a===pid||u.b===pid));
     seen.add(pid);
     const pushSp=u=>{ const sp=P(u.a===pid?u.b:u.a);
-      if(sp&&!seen.has(sp.id)){ seen.add(sp.id); push(sp); } };
+      if(sp&&!seen.has(sp.id)){ seen.add(sp.id); push(sp); pushPets(sp.id); } };
+    const pushPets=ownerId=>ps.filter(q=>q.gender==='pet'&&q.owner===ownerId&&!seen.has(q.id))
+      .forEach(q=>{ seen.add(q.id); push(q); });
     if(myUs.length>1){          // 多段婚姻：第一任在左、本人居中、其後在右
-      pushSp(myUs[0]); push(p);
+      pushSp(myUs[0]); push(p); pushPets(pid);
       myUs.slice(1).forEach(pushSp);
       myUs.forEach(u=>sortedKids(u).forEach(c=>visit(c.id)));
     }else{
-      push(p);
+      push(p); pushPets(pid);
       myUs.forEach(u=>{ pushSp(u); sortedKids(u).forEach(c=>visit(c.id)); });
     }
   }
@@ -1362,6 +1424,87 @@ function trim(x1,y1,x2,y2,r1,r2){
 }
 
 /* ---- 生活圈：凸包＋平滑 ---- */
+/* 生活圈輪廓（平滑場法）：成員各發出一團平滑的正場、相鄰成員之間鋪橋、非成員發出負場把輪廓推開，
+   再對場取等值線 → 得到圓潤、會避開非成員、成員拉遠也不會出現細脖子或孔洞的輪廓 */
+function circleOutlines(members, others, HW, HH){
+  const CELL=6, T=0.42;
+  const R=92, RN=50, KN=1.6, RC=34;
+  const labelDrop=26*FS();
+  const sq=v=>v>0?v*v:0;
+  const rectDist=(px,py,b)=>{ const dx=Math.max(b[0]-px,0,px-b[2]), dy=Math.max(b[1]-py,0,py-b[3]); return Math.hypot(dx,dy); };
+  const segDist=(px,py,ax,ay,bx,by)=>{ const vx=bx-ax,vy=by-ay,L=vx*vx+vy*vy||1;
+    let t=((px-ax)*vx+(py-ay)*vy)/L; t=Math.max(0,Math.min(1,t)); return Math.hypot(px-(ax+vx*t),py-(ay+vy*t)); };
+  const box=p=>[p.x-HW,p.y-HH,p.x+HW,p.y+HH+labelDrop-6];
+  const mb=members.map(box), ob=others.map(box);
+  // 橋：相鄰（同排或上下最多兩代）且中間沒被非成員擋住
+  const bridges=[];
+  const segHits=(ax,ay,bx,by,b,m)=>{ for(let i=0;i<=24;i++){ const t=i/24,x=ax+(bx-ax)*t,y=ay+(by-ay)*t;
+    if(x>b[0]-m&&x<b[2]+m&&y>b[1]-m&&y<b[3]+m) return true; } return false; };
+  for(let i=0;i<members.length;i++) for(let j=i+1;j<members.length;j++){
+    const a=members[i], b=members[j], dx=Math.abs(a.x-b.x), dy=Math.abs(a.y-b.y);
+    const sameRow=dy<HH && dx<=GEN.SLOT*3.4;          // 同排拉遠仍用平滑管道相連
+    const stacked=dy<=GEN.GENH*2.3 && dx<=GEN.SLOT*2.2;
+    if(!sameRow && !stacked) continue;
+    const narrow=dy>GEN.GENH*1.25;                      // 隔一代：從中間那排的人之間穿過
+    if(ob.some(o=>segHits(a.x,a.y,b.x,b.y,o,narrow?4:10))) continue;
+    bridges.push([a.x,a.y,b.x,b.y, narrow?20:RC, narrow?1.7:1.0]);
+  }
+  const field=(x,y)=>{
+    let f=0;
+    for(const b of mb) f+=sq(1-rectDist(x,y,b)/R);
+    for(const br of bridges) f+=br[5]*sq(1-segDist(x,y,br[0],br[1],br[2],br[3])/br[4]);
+    for(const o of ob) f-=KN*sq(1-rectDist(x,y,o)/RN);
+    return f;
+  };
+  // 取樣範圍
+  const minX=Math.min(...mb.map(b=>b[0]))-R, minY=Math.min(...mb.map(b=>b[1]))-R;
+  const maxX=Math.max(...mb.map(b=>b[2]))+R, maxY=Math.max(...mb.map(b=>b[3]))+R;
+  const W=Math.ceil((maxX-minX)/CELL)+2, H=Math.ceil((maxY-minY)/CELL)+2;
+  const F=new Float32Array(W*H);
+  for(let j=0;j<H;j++) for(let i=0;i<W;i++) F[j*W+i]=field(minX+i*CELL,minY+j*CELL)-T;
+  // marching squares（線性內插）→ 以「格線邊」為節點串成迴圈
+  const adj=new Map();
+  const ptOn=(i,j,horiz)=>{           // 邊 (i,j)-(i+1,j) 或 (i,j)-(i,j+1) 上的零點
+    const a=F[j*W+i], b=horiz?F[j*W+i+1]:F[(j+1)*W+i];
+    const t=a/(a-b);
+    return horiz?[minX+(i+t)*CELL, minY+j*CELL]:[minX+i*CELL, minY+(j+t)*CELL];
+  };
+  const link=(k1,k2)=>{ (adj.get(k1)||adj.set(k1,[]).get(k1)).push(k2); (adj.get(k2)||adj.set(k2,[]).get(k2)).push(k1); };
+  for(let j=0;j<H-1;j++) for(let i=0;i<W-1;i++){
+    const tl=F[j*W+i]>0, tr=F[j*W+i+1]>0, br=F[(j+1)*W+i+1]>0, bl=F[(j+1)*W+i]>0;
+    const idx=(tl?8:0)+(tr?4:0)+(br?2:0)+(bl?1:0);
+    if(idx===0||idx===15) continue;
+    const Tk=`h${i},${j}`, Bk=`h${i},${j+1}`, Lk=`v${i},${j}`, Rk=`v${i+1},${j}`;
+    const cases={1:[[Lk,Bk]],2:[[Bk,Rk]],3:[[Lk,Rk]],4:[[Tk,Rk]],5:[[Lk,Tk],[Bk,Rk]],6:[[Tk,Bk]],7:[[Lk,Tk]],
+      8:[[Tk,Lk]],9:[[Tk,Bk]],10:[[Tk,Rk],[Lk,Bk]],11:[[Tk,Rk]],12:[[Rk,Lk]],13:[[Rk,Bk]],14:[[Bk,Lk]]};
+    cases[idx].forEach(([a,b])=>link(a,b));
+  }
+  const coord=k=>{ const h=k[0]==='h'; const [i,j]=k.slice(1).split(',').map(Number); return ptOn(i,j,h); };
+  const seen=new Set(), loops=[];
+  for(const k0 of adj.keys()){
+    if(seen.has(k0)) continue;
+    const loop=[]; let prev=null, cur=k0;
+    while(cur && !seen.has(cur)){
+      seen.add(cur); loop.push(coord(cur));
+      const nx=(adj.get(cur)||[]).find(n=>n!==prev && !seen.has(n)); prev=cur; cur=nx;
+    }
+    if(loop.length<8) continue;
+    let area=0; for(let i=0;i<loop.length;i++){ const a=loop[i], b=loop[(i+1)%loop.length]; area+=a[0]*b[1]-b[0]*a[1]; }
+    if(Math.abs(area)/2 < HW*HH*1.2) continue;   // 太小的孔洞／碎片不畫
+    loops.push(loop);
+  }
+  // 去孔洞：被其他迴圈包住的就是洞；只有洞裡真的坐著一位非成員時才保留（那是刻意把他排除在外）
+  const inPoly=(x,y,pts)=>{ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const [xi,yi]=pts[i],[xj,yj]=pts[j]; if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi)) c=!c; } return c; };
+  const kept=loops.filter((l,i)=>{
+    const isHole=loops.some((o,j)=>j!==i && inPoly(l[0][0],l[0][1],o));
+    if(!isHole) return true;
+    return others.some(p=>inPoly(p.x,p.y,l));
+  });
+  const chaikin=pts=>{ const out=[], n=pts.length; for(let i=0;i<n;i++){ const a=pts[i], b=pts[(i+1)%n];
+    out.push([a[0]*0.75+b[0]*0.25,a[1]*0.75+b[1]*0.25],[a[0]*0.25+b[0]*0.75,a[1]*0.25+b[1]*0.75]); } return out; };
+  return kept.map(l=>chaikin(chaikin(l)));
+}
 function hull(pts){
   const p=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
   const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
@@ -1390,6 +1533,15 @@ function smoothClosed(pts,stroke){
 }
 
 /* ---- 家系圖 ---- */
+/* 人物符號在某個高度的半寬（線條要接在形狀邊界，不是外框矩形） */
+function halfW(p,atY){
+  const hw=HW_*nodeScale(p), hh=HH_*nodeScale(p), g=p.gender;
+  if(g==='unknown'){ const t=(atY-(p.y-hh))/(2*hh); return hw*Math.max(0,Math.min(1,t)); }   // 三角形：頂點窄、底寬
+  if(g==='female'){ const d=(atY-p.y)/hh; return hw*Math.sqrt(Math.max(0,1-d*d)); }         // 圓形
+  if(g==='pet'){ return hw*(1-Math.min(1,Math.abs(atY-p.y)/hh)); }                          // 菱形
+  return hw;                                                                                   // 方形
+}
+const HW_=GEN.NW/2, HH_=GEN.NH/2;
 function buildGenogram(){
   const size=computeGeno();
   const ps=state.geno.persons, us=state.geno.unions;
@@ -1404,19 +1556,17 @@ function buildGenogram(){
   state.geno.circles.forEach(c=>{
     const mem=c.members.map(P).filter(Boolean);
     if(mem.length<1) return;
-    const pad=20, pts=[];
-    mem.forEach(p=>{
-      const ly=p.y+HH+26;
-      [[-HW-pad,-HH-pad],[HW+pad,-HH-pad],[HW+pad,ly-p.y],[-HW-pad,ly-p.y]]
-        .forEach(([dx,dy])=>pts.push([p.x+dx,p.y+dy]));
+    const others=ps.filter(p=>!mem.includes(p));
+    const loops=circleOutlines(mem, others, HW, HH);
+    loops.forEach(loop=>{
+      for(let i=0;i<loop.length;i++){ const a=loop[i], b=loop[(i+1)%loop.length];
+        line({x1:a[0],y1:a[1],x2:b[0],y2:b[1],sw:1.5,stroke:col.ring,ring:true}); }
+      D.push({k:'ringpath',pts:loop,stroke:col.ring});          // PPTX 用：單一可編輯的不規則形
     });
-    const h=hull(pts);
-    if(h.length>=3) smoothClosed(h,col.ring);
-    const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
-    D.push({k:'ringbox',x:Math.min(...xs),y:Math.min(...ys),
-            w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys),stroke:col.ring});
-    const bot=h.reduce((a,b)=>b[1]>a[1]?b:a,h[0]);
-    if(c.label) text({cx:bot[0],cy:bot[1]+13,w:110,h:16,t:c.label,size:11.5,color:col.ring});
+    if(loops.length && c.label){
+      const all=loops.flat(); const bot=all.reduce((a,b)=>b[1]>a[1]?b:a,all[0]);
+      text({cx:bot[0],cy:bot[1]+13,w:110,h:16,t:c.label,size:11.5,color:col.ring});
+    }
   });
 
   /* 婚姻與子女 */
@@ -1434,8 +1584,26 @@ function buildGenogram(){
     const blocked=ps.some(q=>q!==a&&q!==b&&Math.abs(q.y-y)<GEN.NH*0.7
       && q.x>L.x+GEN.NW*0.55 && q.x<R.x-GEN.NW*0.55);
     let mx=(L.x+R.x)/2, markY=y, dropY=y;
-    if(!blocked){
-      line({x1:L.x+HW,y1:y,x2:R.x-HW,y2:y,sw:2,dash});
+    const tilted=Math.abs(L.y-R.y)>4;             // 兩人不同高（拖曳後）→ 階梯式連接線，兩端都接在人身上
+    if(!blocked && !tilted){
+      line({x1:L.x+halfW(L,y),y1:y,x2:R.x-halfW(R,y),y2:y,sw:2,dash});
+    }else if(!blocked && tilted){
+      const gap=R.x-HW-(L.x+HW);
+      if(gap>=24){                                  // 有橫向空間：橫—直—橫
+        line({x1:L.x+halfW(L,L.y),y1:L.y,x2:mx,y2:L.y,sw:2,dash});
+        line({x1:mx,y1:L.y,x2:mx,y2:R.y,sw:2,dash});
+        line({x1:mx,y1:R.y,x2:R.x-halfW(R,R.y),y2:R.y,sw:2,dash});
+        markY=(L.y+R.y)/2; dropY=Math.max(L.y,R.y);
+      }else{                                        // 幾乎上下疊：改走下方繞線
+        const lx=L.x+HW*0.55, rx=R.x-HW*0.55;
+        let yb=Math.max(L.y,R.y)+HH+30*FS();
+        if(busY!==null) yb=Math.min(yb,busY-12);
+        yb=Math.max(yb,Math.max(L.y,R.y)+HH+10);
+        line({x1:lx,y1:L.y+HH,x2:lx,y2:yb,sw:2,dash});
+        line({x1:lx,y1:yb,x2:rx,y2:yb,sw:2,dash});
+        line({x1:rx,y1:yb,x2:rx,y2:R.y+HH,sw:2,dash});
+        mx=(lx+rx)/2; markY=yb; dropY=yb;
+      }
     }else{
       const lx=L.x+HW*0.55, rx=R.x-HW*0.55;
       let yb=Math.max(L.y,R.y)+HH+30*FS();
@@ -1472,7 +1640,8 @@ function buildGenogram(){
   /* 情感關係 */
   state.geno.ties.forEach(t=>{
     const a=P(t.a),b=P(t.b); if(!a||!b||a===b) return;
-    const [x1,y1,x2,y2]=trim(a.x,a.y,b.x,b.y,HW+4,HW+4);
+    const ra=(a.gender==='unknown'?HW*0.72:HW)+4, rb=(b.gender==='unknown'?HW*0.72:HW)+4;
+    const [x1,y1,x2,y2]=trim(a.x,a.y,b.x,b.y,ra,rb);
     const s=col.tie;
     if(t.type==='positive')      line({x1,y1,x2,y2,sw:1.6,stroke:s});
     else if(t.type==='close')    line({x1,y1,x2,y2,sw:4.5,stroke:s});
@@ -1495,34 +1664,55 @@ function buildGenogram(){
   /* 人物 */
   const idxStyle=(document.getElementById('optIndex')?.value)||'shade';
   ps.forEach(p=>{
-    const ns=nodeScale(p), hw=HW*ns, hh=HH*ns;
+    const isPet=p.gender==='pet';
+    const ns=nodeScale(p), hw=HW*ns, hh=HH*ns;   // 動物與其他成員同尺寸，線才接得上、數字也不縮
     const fill=(p.index&&idxStyle==='shade')?SHADE:'#ffffff';
     const sw=(p.index&&idxStyle==='red')?3:2;
     const stroke=(p.index&&idxStyle==='red')?'#D64027':INK;
-    const shp=p.gender==='male'?'rect':(p.gender==='female'?'ellipse':'triangle');
+    const shp=p.gender==='male'?'rect':(p.gender==='female'?'ellipse':(isPet?'diamond':'triangle'));
     shape({shape:shp,x:p.x-hw,y:p.y-hh,w:GEN.NW*ns,h:GEN.NH*ns,fill,sw,stroke});
     if(p.index&&idxStyle==='double'){                 // 雙框：內縮再畫一層
       const g=7*ns;
       shape({shape:shp,x:p.x-hw+g,y:p.y-hh+g,w:GEN.NW*ns-g*2,h:GEN.NH*ns-g*2,sw:1.6,stroke:INK});
     }
-    if(p.ill){
-      const bs=HW*0.42*ns;
-      const ix=p.gender==='female'?p.x+hw*0.5-bs*0.5:p.x+hw-bs-3*ns;
-      const iy=p.gender==='unknown'?p.y+hh-bs-2*ns:(p.gender==='female'?p.y+hh*0.5-bs:p.y+hh-bs-3*ns);
-      shape({shape:'rect',x:ix,y:iy,w:bs,h:bs,sw:0,stroke:INK,fill:INK});
+    if(p.ill){                                     // 身障／慢性病：右下角塗黑一小塊（依台灣符號表），貼合形狀邊界
+      const cx=p.x, cy=p.y, k=hw*0.56;             // 小角邊長 ≈ 20px
+      const a0=hw-k;                                // 小角左／上緣（相對中心）
+      let pts;
+      if(shp==='rect') pts=[[cx+a0,cy+a0],[cx+hw,cy+a0],[cx+hw,cy+hh],[cx+a0,cy+hh]];
+      else if(shp==='ellipse'){
+        // 小角矩形 ∩ 圓：從 (a0,a0) 往右到圓上、沿弧到 (圓上,a0)、回到 (a0,a0)
+        const xr=Math.sqrt(Math.max(0,hw*hw-a0*a0));      // 在 y=a0 高度圓的 x
+        const th1=Math.atan2(a0,xr), th2=Math.atan2(xr,a0);
+        pts=[[cx+a0,cy+a0],[cx+xr,cy+a0]];
+        for(let i=1;i<10;i++){ const t=th1+(th2-th1)*i/10; pts.push([cx+hw*Math.cos(t),cy+hh*Math.sin(t)]); }
+        pts.push([cx+a0,cy+xr]);
+      }
+      else if(shp==='diamond'){                     // 菱形：塗底部尖角
+        const m=k*0.9; pts=[[cx,cy+hh],[cx-m,cy+hh-m],[cx,cy+hh-2*m*0.5],[cx+m,cy+hh-m]];
+        pts=[[cx-m,cy+hh-m],[cx+m,cy+hh-m],[cx,cy+hh]];
+      }
+      else {                                        // 三角形：小角矩形 ∩ 三角形（右斜邊 x=(y+hh)/2）
+        const xTop=(a0+hh)/2; pts=[[cx+a0,cy+a0],[cx+xTop,cy+a0],[cx+hw,cy+hh],[cx+a0,cy+hh]];
+      }
+      D.push({k:'poly',pts,fill:INK,stroke:INK});
     }
-    if(p.dead){
-      line({x1:p.x-hw,y1:p.y-hh,x2:p.x+hw,y2:p.y+hh,sw:2});
-      line({x1:p.x+hw,y1:p.y-hh,x2:p.x-hw,y2:p.y+hh,sw:2});
+    if(p.dead){                                   // 叉叉畫在符號「內」：方形對角、圓形內接、三角／菱形內縮
+      const k = shp==='rect'?1 : shp==='ellipse'?0.707 : shp==='diamond'?0.5 : 0.55;
+      const oy = shp==='triangle'?hh*0.35:0;   // 三角形重心偏下
+      line({x1:p.x-hw*k,y1:p.y+oy-hh*k,x2:p.x+hw*k,y2:p.y+oy+hh*k,sw:2});
+      line({x1:p.x+hw*k,y1:p.y+oy-hh*k,x2:p.x-hw*k,y2:p.y+oy+hh*k,sw:2});
     }
     const shown=displayAge(p), isz=IS()*ns;
     if(shown){
+      const ax=p.x;
       const ay=p.gender==='unknown'?p.y+hh*0.42:p.y;
       const bw=Math.min(GEN.NW*ns-4,(16+shown.length*11)*isz), bh=22*isz;
-      shape({shape:'rect',x:p.x-bw/2,y:ay-bh/2,w:bw,h:bh,sw:0,stroke:fill,fill});
-      text({cx:p.x,cy:ay,w:GEN.NW*ns-10,t:shown,size:15*isz,bold:true,abs:true});
+      if(p.dead) shape({shape:'rect',x:ax-bw/2,y:ay-bh/2,w:bw,h:bh,sw:0,stroke:fill,fill});  // 白底只在已故（叉叉）時需要
+      text({cx:ax,cy:ay,w:GEN.NW*ns-10,t:shown,size:15*isz,bold:true,abs:true});
     }
     text({cx:p.x,cy:p.y+hh+16*FS(),w:GEN.SLOT,t:label(p),size:13*FS(),bold:p.index,abs:true});
+    if(p.note) text({cx:p.x,cy:p.y+hh+30*FS(),w:GEN.SLOT,t:p.note,size:10.5*FS(),color:GREY,abs:true});
   });
   return size;
 }
@@ -1555,9 +1745,30 @@ function buildEcomap(){
   if(!sys.length)
     text({cx, cy:cy-CR-36, w:w-60, h:20, t:'在左側新增外部系統（學校、醫療、就業、鄰里…）', size:12.5, color:'#9aa6a2'});
   shape({shape:'ellipse',x:cx-CR,y:cy-CR,w:CR*2,h:CR*2,sw:3.5,fill:'#ffffff'});
-  text({cx,cy:cy-18,w:CR*1.8,h:22,t:state.eco.center||'個案家庭',size:16,bold:true});
-  (state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,4)
-    .forEach((m,i)=>text({cx,cy:cy+8*FS()+i*19*FS(),w:CR*1.8,h:18,t:m,size:12.5,color:'#41504e'}));
+  const members=(state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,6);
+  const useIcons=document.getElementById('optCenterIcons')?.checked && members.length;
+  if(!useIcons){
+    text({cx,cy:cy-18,w:CR*1.8,h:22,t:state.eco.center||'個案家庭',size:16,bold:true});
+    members.slice(0,4).forEach((m,i)=>text({cx,cy:cy+8*FS()+i*19*FS(),w:CR*1.8,h:18,t:m,size:12.5,color:'#41504e'}));
+  }else{
+    text({cx,cy:cy-CR*0.62,w:CR*1.8,h:20,t:state.eco.center||'個案家庭',size:14,bold:true});
+    const idxStyleE=(document.getElementById('optIndex')?.value)||'shade';
+    const SZ=22, GAP=36, perRow=members.length>3?Math.ceil(members.length/2):members.length;
+    const rows=Math.ceil(members.length/perRow);
+    members.forEach((nm,i)=>{
+      const r=Math.floor(i/perRow), c=i%perRow, n=Math.min(perRow,members.length-r*perRow);
+      const x=cx+(c-(n-1)/2)*GAP, y=cy-CR*0.08+(r-(rows-1)/2)*44;
+      const per=state.geno.persons.find(q=>label(q)===nm);
+      const g=per?per.gender:'unknown', isIdx=!!per?.index;
+      const fill=(isIdx&&idxStyleE==='shade')?SHADE:'#ffffff';
+      const stroke=(isIdx&&idxStyleE==='red')?'#D64027':INK;
+      const shp=g==='male'?'rect':(g==='female'?'ellipse':(g==='pet'?'diamond':'triangle'));
+      shape({shape:shp,x:x-SZ/2,y:y-SZ/2,w:SZ,h:SZ,sw:isIdx&&idxStyleE==='red'?2.4:1.8,fill,stroke});
+      if(isIdx&&idxStyleE==='double') shape({shape:shp,x:x-SZ/2+3,y:y-SZ/2+3,w:SZ-6,h:SZ-6,sw:1.2,stroke:INK});
+      if(per?.dead){ line({x1:x-SZ/2,y1:y-SZ/2,x2:x+SZ/2,y2:y+SZ/2,sw:1.4}); line({x1:x+SZ/2,y1:y-SZ/2,x2:x-SZ/2,y2:y+SZ/2,sw:1.4}); }
+      text({cx:x,cy:y+SZ/2+9,w:GAP,h:14,t:nm,size:10,color:'#41504e',bold:isIdx});
+    });
+  }
   sys.forEach(s=>{
     shape({shape:'ellipse',x:s.x-SR,y:s.y-SR,w:SR*2,h:SR*2,sw:2,fill:'#ffffff',
            stroke:s.stress?col.stress:col.tie});
@@ -1570,9 +1781,9 @@ function buildEcomap(){
 function wrap(s,per){ const o=[]; for(let i=0;i<s.length;i+=per) o.push(s.slice(i,i+per)); return o.length?o:['']; }
 
 /* ---- 圖例 ---- */
-const LGw=()=>Math.round(124*FS()), LRh=()=>Math.round(30*FS());
+const LGw=()=>Math.round(142*FS()), LRh=()=>Math.round(30*FS());
 const legendItems=()=>state.mode==='genogram'
-  ? [['rect','男'],['ellipse','女'],['tri','不確定／懷孕'],['shade','案主'],['dead','已故'],['ill','身障慢病'],
+  ? [['rect','男'],['ellipse','女'],['tri','不確定／懷孕'],['pet','伴侶動物'],['shade','案主'],['dead','已故'],['ill','身障慢病'],
      ['solid','結婚'],['dash','同居'],['x','離婚'],['slash','分居'],['adopt','收養'],['twin','多胞胎'],
      ['thin',TIE_LABEL.positive],['thick',TIE_LABEL.close],['fused',TIE_LABEL.fused],
      ['zig',TIE_LABEL.conflict],['closezig',TIE_LABEL.closeconflict],['hatch',TIE_LABEL.worsening],
@@ -1591,6 +1802,7 @@ function legend(w,top){
     if(k==='rect') box('#ffffff');
     else if(k==='ellipse') shape({shape:'ellipse',x,y:y-9,w:18,h:18,sw:1.8,fill:'#ffffff'});
     else if(k==='tri') shape({shape:'triangle',x,y:y-9,w:18,h:18,sw:1.8,fill:'#ffffff'});
+    else if(k==='pet') shape({shape:'diamond',x,y:y-9,w:18,h:18,sw:1.8,fill:'#ffffff'});
     else if(k==='shade'){
       const st=(document.getElementById('optIndex')?.value)||'shade';
       if(st==='shade') box(SHADE);
@@ -1598,7 +1810,7 @@ function legend(w,top){
       else { box('#ffffff'); shape({shape:'rect',x:x+3.5,y:y-5.5,w:11,h:11,sw:1.4,stroke:INK}); }
     }
     else if(k==='dead'){ box('#ffffff'); line({x1:x,y1:y-9,x2:x+18,y2:y+9,sw:1.5}); line({x1:x+18,y1:y-9,x2:x,y2:y+9,sw:1.5}); }
-    else if(k==='ill'){ box('#ffffff'); shape({shape:'rect',x:x+9,y:y,w:9,h:9,sw:0,stroke:INK,fill:INK}); }
+    else if(k==='ill'){ box('#ffffff'); D.push({k:'poly',pts:[[x+11,y+2],[x+18,y+2],[x+18,y+9],[x+11,y+9]],fill:INK,stroke:INK}); }
     else if(k==='solid'||k==='thin') line({x1:x,y1:y,x2:x+26,y2:y,sw:k==='thin'?1.6:2});
     else if(k==='thick') line({x1:x,y1:y,x2:x+26,y2:y,sw:4.5,stroke:col.tie});
     else if(k==='fused') line({x1:x,y1:y,x2:x+26,y2:y,sw:8,stroke:col.tie});
@@ -1619,7 +1831,7 @@ function legend(w,top){
     else if(k==='arrow'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2,stroke:col.tie});
                           line({x1:x+26,y1:y,x2:x+18,y2:y-5,sw:2,stroke:col.tie});
                           line({x1:x+26,y1:y,x2:x+18,y2:y+5,sw:2,stroke:col.tie}); }
-    text({cx:x+62*FS(),cy:y,w:64*FS(),h:16,t,size:11.5,color:GREY});
+    text({cx:x+34*FS()+48*FS(),cy:y,w:96*FS(),h:16,t,size:11.5,color:GREY,align:'left'});
   });
 }
 
@@ -1640,9 +1852,13 @@ function render(){
       if(o.shape==='rect') body+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" ${st}/>`;
       if(o.shape==='ellipse') body+=`<ellipse cx="${o.x+o.w/2}" cy="${o.y+o.h/2}" rx="${o.w/2}" ry="${o.h/2}" ${st}/>`;
       if(o.shape==='triangle') body+=`<polygon points="${o.x+o.w/2},${o.y} ${o.x+o.w},${o.y+o.h} ${o.x},${o.y+o.h}" ${st}/>`;
+      if(o.shape==='diamond') body+=`<polygon points="${o.x+o.w/2},${o.y} ${o.x+o.w},${o.y+o.h/2} ${o.x+o.w/2},${o.y+o.h} ${o.x},${o.y+o.h/2}" ${st}/>`;
+    }
+    if(o.k==='poly'){
+      body+=`<polygon points="${o.pts.map(q=>q[0]+','+q[1]).join(' ')}" fill="${o.fill}" stroke="${o.stroke}" stroke-width="0.5"/>`;
     }
     if(o.k==='line') body+=`<line x1="${o.x1}" y1="${o.y1}" x2="${o.x2}" y2="${o.y2}" stroke="${o.stroke}" stroke-width="${o.sw}" stroke-linecap="round"${o.dash?` stroke-dasharray="${o.dash}"`:''}/>`;
-    if(o.k==='text') body+=`<text x="${o.cx}" y="${o.cy+o.size*0.36}" text-anchor="middle" font-family="Microsoft JhengHei, 微軟正黑體, sans-serif" font-size="${o.size}" fill="${o.color}"${o.bold?' font-weight="700"':''}>${esc(o.t)}</text>`;
+    if(o.k==='text') body+=`<text x="${o.align==='left'?o.cx-o.w/2:o.cx}" y="${o.cy+o.size*0.36}" text-anchor="${o.align==='left'?'start':'middle'}" font-family="${SVG_FONT}" font-size="${o.size}" fill="${o.color}"${o.bold?' font-weight="700"':''}>${esc(o.t)}</text>`;
   });
   let handles='';
   if(state.mode==='genogram')
@@ -1657,6 +1873,7 @@ function render(){
   bindDrag();
   refreshCounts();
   applyZoom();
+  scheduleAutosave();
   stat.textContent = state.mode==='genogram'
     ? `成員 ${state.geno.persons.length}　關係 ${state.geno.unions.length}　情感 ${state.geno.ties.length}　生活圈 ${state.geno.circles.length}`
     : `外部系統 ${state.eco.systems.length}`;
@@ -1709,6 +1926,7 @@ function restoreState(str){
 /* 在「即將改變資料」之前呼叫 */
 let lastSnapAt=0;
 function snapshot(){
+  autosaveArmed=true;
   const now=Date.now();
   if(now-lastSnapAt<120) return;      // 同一動作的巢狀呼叫只記一次
   lastSnapAt=now;
@@ -1725,10 +1943,10 @@ function doUndo(){
   toast('已復原');
 }
 function doRedo(){
-  if(!HIST.future.length){ toast('沒有可以重做的動作'); return; }
+  if(!HIST.future.length){ toast('沒有可以取消的復原'); return; }
   HIST.past.push(captureState());
   restoreState(HIST.future.pop());
-  toast('已重做');
+  toast('已取消復原');
 }
 function updateHistBtns(){
   const u=document.getElementById('btnUndo'), r=document.getElementById('btnRedo');
@@ -1793,13 +2011,23 @@ function exportPPTX(){
     return /^[0-9A-F]{6}$/.test(h)?h:'12343B'; };
   D.forEach(o=>{
     if(o.k==='shape'){
-      slide.addShape({rect:'rect',ellipse:'ellipse',triangle:'triangle'}[o.shape],{
+      slide.addShape({rect:'rect',ellipse:'ellipse',triangle:'triangle',diamond:'diamond'}[o.shape],{
         x:X(o.x),y:Y(o.y),w:L(o.w),h:L(o.h),
         fill:o.fill==='none'?{type:'none'}:{color:hex(o.fill)},
         line:o.sw?{color:hex(o.stroke),width:Math.max(0.75,o.sw*0.75)}:{color:hex(o.fill),width:0.25}});
     }
-    if(o.k==='ringbox'){
-      slide.addShape('roundRect',{x:X(o.x),y:Y(o.y),w:L(o.w),h:L(o.h),rectRadius:0.12,
+    if(o.k==='poly'){
+      const xs=o.pts.map(q=>q[0]), ys=o.pts.map(q=>q[1]);
+      const x0=Math.min(...xs), y0=Math.min(...ys), w0=Math.max(...xs)-x0||1, h0=Math.max(...ys)-y0||1;
+      const pts=o.pts.map(q=>({x:L(q[0]-x0),y:L(q[1]-y0)})); pts.push({close:true});
+      slide.addShape('custGeom',{x:X(x0),y:Y(y0),w:L(w0),h:L(h0),points:pts,fill:{color:hex(o.fill)},line:{color:hex(o.fill),width:0.25}});
+    }
+    if(o.k==='ringpath'){
+      const xs=o.pts.map(q=>q[0]), ys=o.pts.map(q=>q[1]);
+      const x0=Math.min(...xs), y0=Math.min(...ys), w0=Math.max(...xs)-x0, h0=Math.max(...ys)-y0;
+      const pts=o.pts.filter((_,i)=>i%3===0).map(q=>({x:L(q[0]-x0),y:L(q[1]-y0)}));
+      pts.push({close:true});
+      slide.addShape('custGeom',{x:X(x0),y:Y(y0),w:L(w0),h:L(h0),points:pts,
         fill:{type:'none'},line:{color:hex(o.stroke),width:1}});
     }
     if(o.k==='line'){
@@ -1807,12 +2035,13 @@ function exportPPTX(){
       const x1=X(o.x1),y1=Y(o.y1),x2=X(o.x2),y2=Y(o.y2);
       slide.addShape('line',{x:Math.min(x1,x2),y:Math.min(y1,y2),
         w:Math.abs(x2-x1)||0.001,h:Math.abs(y2-y1)||0.001,flipH:x2<x1,flipV:y2<y1,
-        line:{color:hex(o.stroke),width:Math.max(0.75,o.sw*0.75),dashType:o.dash?'dash':'solid'}});
+        line:{color:hex(o.stroke),width:Math.max(0.75,o.sw*0.75),
+              dashType:o.dash?(String(o.dash).startsWith('2 ')?'sysDot':'dash'):'solid'}});
     }
     if(o.k==='text'){
       slide.addText(o.t,{x:X(o.cx-o.w/2),y:Y(o.cy-o.h/2),w:L(o.w),h:L(o.h),
-        fontSize:Math.max(8,o.size*sc*0.78),fontFace:'Microsoft JhengHei',
-        color:hex(o.color),bold:!!o.bold,align:'center',valign:'middle',margin:0});
+        fontSize:Math.max(8,o.size*sc*0.78),fontFace:EXPORT_FONT,wrap:false,
+        color:hex(o.color),bold:!!o.bold,align:o.align==='left'?'left':'center',valign:'middle',margin:0});
     }
   });
   toast('正在產生 PPTX…');
@@ -1827,7 +2056,7 @@ function exportPPTX(){
 }
 function saveJSON(){
   const opt={age:optAge.value,sort:optSort.checked,legend:optLegend.checked,color:optColor.checked,
-             index:optIndex.value,zoom};
+             index:optIndex.value,zoom,icons:document.getElementById('optCenterIcons')?.checked};
   download(new Blob([JSON.stringify({v:3,opt,...state},null,2)],{type:'application/json'}),`案家圖資_${stamp()}.json`);
   toast('已存檔，下次可用「開啟 JSON」續編');
 }
@@ -1851,6 +2080,271 @@ function loadJSON(inp){
 }
 
 /* ===================== 範例 ===================== */
+
+/* ===================== 本機暫存（localStorage） ===================== */
+const LS_AUTO='genoTool.autosave', LS_SLOTS='genoTool.slots', LS_DISMISS='genoTool.dismissAt';
+const lsOK=(()=>{ try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return true; }catch(e){ return false; } })();
+const nowStr=()=>{ const d=new Date(); const p=n=>String(n).padStart(2,'0');
+  return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+function packState(){
+  return JSON.stringify({v:3,mode:state.mode,geno:state.geno,eco:state.eco,
+    opt:{age:optAge.value,sort:optSort.checked,legend:optLegend.checked,color:optColor.checked,index:optIndex.value,
+         icons:document.getElementById('optCenterIcons')?.checked}});
+}
+function unpackState(str){
+  const d=JSON.parse(str);
+  state.geno=d.geno; state.eco=d.eco; state.geno.circles ||= [];
+  state.geno.persons.forEach(p=>{ p.ill??=false; p.pinned??=false; delete p.scale; });
+  state.geno.unions.forEach(u=>{ u.children=u.children.map(c=>typeof c==='string'?{id:c,link:'birth',twin:false}:{link:'birth',twin:false,...c}); });
+  if(d.opt){ optAge.value=d.opt.age||'age'; curAgeMode=optAge.value; optSort.checked=!!d.opt.sort;
+    optLegend.checked=!!d.opt.legend; optColor.checked=!!d.opt.color; if(d.opt.index) optIndex.value=d.opt.index;
+    if(d.opt.icons!==undefined){ const ci=document.getElementById('optCenterIcons'); if(ci) ci.checked=!!d.opt.icons; } }
+  uid=99999; setMode(d.mode||'genogram'); syncUI();
+}
+/* 自動儲存：每次畫面更新後 800ms 內若無新變動就寫入 */
+let autoTimer=null, autoStamp='', autosaveArmed=false;   // 使用者動手改過才開始自動儲存
+function scheduleAutosave(){
+  if(!lsOK) return;
+  clearTimeout(autoTimer);
+  autoTimer=setTimeout(()=>{
+    if(!autosaveArmed) return;          // 寫入當下再確認一次，避免初始載入的排程覆蓋舊資料
+    try{ localStorage.setItem(LS_AUTO, JSON.stringify({at:Date.now(),label:nowStr(),data:packState()}));
+      autoStamp=nowStr(); }catch(e){}
+  },800);
+}
+function isEmptyState(){ return !state.geno.persons.length && !state.eco.systems.length; }
+/* 關閉或切換分頁時立刻寫入，不等緩衝 */
+function flushAutosave(){
+  if(!lsOK || !autosaveArmed) return;
+  clearTimeout(autoTimer);
+  try{ localStorage.setItem(LS_AUTO, JSON.stringify({at:Date.now(),label:nowStr(),data:packState()})); }catch(e){}
+}
+window.addEventListener('pagehide',flushAutosave);
+window.addEventListener('beforeunload',flushAutosave);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushAutosave(); });
+/* 開啟時：若有自動儲存且不是剛忽略過的，提示續用 */
+function checkResume(){
+  if(!lsOK) return;
+  try{
+    const raw=localStorage.getItem(LS_AUTO); if(!raw) return;
+    const rec=JSON.parse(raw);
+    const dismissed=+localStorage.getItem(LS_DISMISS)||0;
+    if(rec.at<=dismissed) return;
+    const d=JSON.parse(rec.data);
+    if(!d.geno?.persons?.length && !d.eco?.systems?.length) return;
+    document.getElementById('resumeTime').textContent=rec.label||'';
+    document.getElementById('resumeBar').classList.add('on');
+  }catch(e){}
+}
+function resumeAuto(){
+  autosaveArmed=true;
+  try{ const rec=JSON.parse(localStorage.getItem(LS_AUTO)); snapshot(); unpackState(rec.data);
+    toast('已載入上次的內容'); }catch(e){ toast('載入失敗'); }
+  document.getElementById('resumeBar').classList.remove('on');
+}
+function dismissResume(){
+  // 使用者尚未動手改，維持未啟用；等真的變更（snapshot）才開始寫入
+  try{ localStorage.setItem(LS_DISMISS, String(Date.now())); }catch(e){}
+  document.getElementById('resumeBar').classList.remove('on');
+}
+/* 具名暫存槽 */
+function getSlots(){ try{ return JSON.parse(localStorage.getItem(LS_SLOTS)||'[]'); }catch(e){ return []; } }
+function setSlots(a){ try{ localStorage.setItem(LS_SLOTS, JSON.stringify(a.slice(0,30))); }catch(e){ toast('儲存空間不足或被瀏覽器封鎖'); } }
+function toggleDraftMenu(ev){
+  ev.stopPropagation();
+  const m=document.getElementById('draftMenu');
+  const on=!m.classList.contains('on');
+  document.getElementById('tplMenu')?.classList.remove('on');
+  if(on){ renderDraftMenu(); m.classList.add('on');
+    setTimeout(()=>document.addEventListener('pointerdown',closeDraftOutside),0); }
+  else m.classList.remove('on');
+}
+function closeDraftOutside(e){
+  if(e.target.closest('#draftMenu')||e.target.closest('#draftBtn')) return;
+  document.getElementById('draftMenu').classList.remove('on');
+  document.removeEventListener('pointerdown',closeDraftOutside);
+}
+function renderDraftMenu(){
+  const m=document.getElementById('draftMenu');
+  if(!lsOK){ m.innerHTML='<div class="empty">此瀏覽器不允許本機儲存（可能是無痕模式）。請改用「存檔 JSON」。</div>'; return; }
+  const slots=getSlots();
+  const idxName=state.geno.persons.find(p=>p.index)?.name || state.eco.center || '';
+  const defName=idxName?`${idxName}家庭`:'未命名';
+  m.innerHTML=`
+    <div class="auto">自動儲存${autoStamp?'：'+autoStamp:'（開啟中）'}</div>
+    <div class="tpl-head">存成暫存檔（只存在這台電腦的這個瀏覽器）</div>
+    <div class="newslot">
+      <input type="text" id="slotName" placeholder="名稱，例：${esc(defName)}" value="${esc(defName)}"
+             onkeydown="if(event.key==='Enter')saveSlot()">
+      <button class="btn sm primary" onclick="saveSlot()">儲存</button>
+    </div>
+    <div class="tpl-head" style="margin-top:4px">暫存檔（${slots.length}）</div>
+    ${slots.length?slots.map((sl,i)=>`
+      <div class="slot">
+        <span class="nm" onclick="loadSlot(${i})" title="點一下載入">${esc(sl.name)}</span>
+        <span class="tm">${esc(sl.label)}</span>
+        <button class="rm" onclick="removeSlot(${i})" title="刪除">✕</button>
+      </div>`).join('')
+    :'<div class="empty">還沒有暫存檔</div>'}
+    <div class="tpl-note">暫存檔不會隨檔案帶走；要換電腦或長期保存請用「存檔 JSON」。</div>`;
+}
+function saveSlot(){
+  const nm=(document.getElementById('slotName')?.value||'').trim()||'未命名';
+  const slots=getSlots();
+  const rec={name:nm,at:Date.now(),label:nowStr(),data:packState()};
+  const i=slots.findIndex(x=>x.name===nm);
+  if(i>-1){ if(!confirm(`已有同名暫存檔「${nm}」，要覆蓋嗎？`)) return; slots[i]=rec; }
+  else slots.unshift(rec);
+  setSlots(slots); renderDraftMenu(); toast(`已暫存「${nm}」`);
+}
+function loadSlot(i){
+  const sl=getSlots()[i]; if(!sl) return;
+  snapshot(); unpackState(sl.data);
+  document.getElementById('draftMenu').classList.remove('on');
+  document.getElementById('hdrActions')?.classList.remove('on');
+  offerUndo(`已載入暫存「${sl.name}」`);
+}
+function removeSlot(i){
+  const slots=getSlots(); const sl=slots[i]; if(!sl) return;
+  if(!confirm(`刪除暫存檔「${sl.name}」？`)) return;
+  slots.splice(i,1); setSlots(slots); renderDraftMenu(); toast('已刪除');
+}
+
+/* ===================== 匯出 Word（.docx） ===================== */
+function svgToPngBlob(svgStr,scale){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'}));
+    const img=new Image();
+    img.onload=()=>{ const c=document.createElement('canvas'); c.width=SIZE.w*scale; c.height=SIZE.h*scale;
+      const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(img,0,0,c.width,c.height);
+      c.toBlob(b=>{ URL.revokeObjectURL(url); b?res(b):rej(new Error('png')); }); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('svg')); };
+    img.src=url;
+  });
+}
+async function exportDOCX(){
+  if(typeof JSZip==='undefined'){ toast('Word 元件未載入，請改用下載 SVG'); return; }
+  if(isEmptyState()){ toast('目前圖是空的，先新增成員或載入範本'); return; }
+  toast('正在產生 Word…');
+  try{
+    const svg=svgString();
+    const png=await svgToPngBlob(svg,2);
+    const pngBuf=await png.arrayBuffer();
+    const title=state.mode==='genogram'?'家系圖':'生態圖';
+    const idx=state.geno.persons.find(p=>p.index)?.name || state.eco.center || '';
+    // 圖片以頁寬 16cm 為上限等比縮放（EMU：1cm = 360000）
+    const maxW=16*360000, cx=Math.min(maxW, Math.round(SIZE.w/96*914400));
+    const cy=Math.round(cx*SIZE.h/SIZE.w);
+    const esx=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const docXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+ xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+ xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+ xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+ xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main">
+<w:body>
+ <w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:rFonts w:eastAsia="${EXPORT_FONT}" w:ascii="${EXPORT_FONT}" w:hAnsi="${EXPORT_FONT}"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve">${esx(title)}${idx?'：'+esx(idx):''}</w:t></w:r></w:p>
+ <w:p><w:r><w:drawing>
+  <wp:inline distT="0" distB="0" distL="0" distR="0">
+   <wp:extent cx="${cx}" cy="${cy}"/>
+   <wp:docPr id="1" name="${esx(title)}"/>
+   <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+    <pic:pic>
+     <pic:nvPicPr><pic:cNvPr id="1" name="${esx(title)}.png"/><pic:cNvPicPr/></pic:nvPicPr>
+     <pic:blipFill>
+      <a:blip r:embed="rIdPng">
+       <a:extLst><a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}"><asvg:svgBlip r:embed="rIdSvg"/></a:ext></a:extLst>
+      </a:blip>
+      <a:stretch><a:fillRect/></a:stretch>
+     </pic:blipFill>
+     <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+    </pic:pic>
+   </a:graphicData></a:graphic>
+  </wp:inline>
+ </w:drawing></w:r></w:p>
+ <w:p><w:r><w:rPr><w:rFonts w:eastAsia="${EXPORT_FONT}" w:ascii="${EXPORT_FONT}" w:hAnsi="${EXPORT_FONT}"/><w:color w:val="808080"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">要調整圖形：點一下圖 → 「圖形格式」→「轉換成圖形」→ 右鍵「取消群組」。</w:t></w:r></w:p>
+ <w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>
+</w:body></w:document>`;
+    const zip=new JSZip();
+    zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+ <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+ <Default Extension="xml" ContentType="application/xml"/>
+ <Default Extension="png" ContentType="image/png"/>
+ <Default Extension="svg" ContentType="image/svg+xml"/>
+ <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+    zip.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+    zip.file('word/_rels/document.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Id="rIdPng" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>
+ <Relationship Id="rIdSvg" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image2.svg"/>
+</Relationships>`);
+    zip.file('word/document.xml',docXml);
+    zip.file('word/media/image1.png',pngBuf);
+    zip.file('word/media/image2.svg',svg);
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    download(blob,fname('docx'));
+    toast('已下載 Word，開啟後點圖 →「圖形格式」→「轉換成圖形」即可編輯');
+  }catch(err){ console.error(err); toast('Word 產生失敗，請改用下載 SVG 或 PPTX'); }
+}
+
+/* ===================== 家系圖 → 生態圖 連動 ===================== */
+function householdFromGeno(){
+  const g=state.geno, idx=g.persons.find(p=>p.index);
+  const circle=g.circles.find(c=>c.members.length);
+  if(circle) return circle.members.map(P).filter(Boolean);
+  if(!idx) return [];
+  const out=[idx];
+  g.unions.filter(u=>u.a===idx.id||u.b===idx.id).forEach(u=>{
+    const sp=P(u.a===idx.id?u.b:u.a); if(sp&&!out.includes(sp)) out.push(sp);
+    u.children.forEach(c=>{ const k=P(c.id); if(k&&!out.includes(k)) out.push(k); });
+  });
+  return out;
+}
+function importCenterFromGeno(announce){
+  const hh=householdFromGeno();
+  const idx=state.geno.persons.find(p=>p.index);
+  if(!hh.length){ if(announce) toast('家系圖裡還沒有案主或成員'); return false; }
+  snapshot();
+  state.eco.center = idx ? `${label(idx)}家庭` : '個案家庭';
+  state.eco.members = hh.map(label).join('、');
+  const ec=document.getElementById('ecoCenter'), em=document.getElementById('ecoMembers');
+  if(ec) ec.value=state.eco.center; if(em) em.value=state.eco.members;
+  renderGenoLink(); render();
+  if(announce) toast(`已從家系圖帶入：${state.eco.center}（${hh.length} 人）`);
+  return true;
+}
+function renderGenoLink(){
+  const box=document.getElementById('genoLinkList'); if(!box) return;
+  const hh=new Set(householdFromGeno().map(p=>p.id));
+  const outside=state.geno.persons.filter(p=>!hh.has(p.id)&&!p.dead);
+  if(!state.geno.persons.length){ box.innerHTML='<div class="empty">家系圖還沒有成員</div>'; return; }
+  if(!outside.length){ box.innerHTML='<div class="empty">家系圖的成員都在同住圈內</div>'; return; }
+  box.innerHTML=outside.map(p=>{
+    const nm=label(p);
+    const exists=state.eco.systems.some(s=>s.label.replace(/（.*?）/g,'')===nm);
+    return `<div class="slot">
+      <span class="nm" style="cursor:default">${esc(nm)}${p.age?`（${esc(displayAge(p))}）`:''}</span>
+      ${exists?'<span class="tm">已加入</span>':`<button class="btn sm" onclick="addSystemFromGeno('${p.id}')">＋ 加入</button>`}
+    </div>`;
+  }).join('');
+}
+function addSystemFromGeno(pid){
+  const p=P(pid); if(!p) return;
+  const idx=state.geno.persons.find(q=>q.index);
+  const tie=idx&&state.geno.ties.find(t=>(t.a===pid&&t.b===idx.id)||(t.b===pid&&t.a===idx.id));
+  const stress=!!tie&&['conflict','closeconflict','worsening','cutoff'].includes(tie.type);
+  const strength=tie?(['close','fused','closeconflict'].includes(tie.type)?'strong':(['distant','cutoff'].includes(tie.type)?'weak':'normal')):'normal';
+  addSystem({label:`${label(p)}（未同住）`,strength,stress,flow:'none'});
+  renderGenoLink();
+  toast(`已加入「${label(p)}」為外部系統${tie?'，線條依家系圖的情感關係設定':''}`);
+}
+
 /* ---- 年齡欄位模式切換：自動換算 ---- */
 let curAgeMode='age';
 function switchAgeMode(next){
@@ -1963,19 +2457,19 @@ function loadTemplate(key,quiet){
   }
   else if(key==='twogen'){
     const gf=mk('案父','male','66'), gm=mk('案母','female','63');
-    const h=mk('案主','male','40',{index:true}), w=mk('案妻','female','38');
+    const h=mk('案主','male','34',{index:true}), w=mk('案妻','female','32');
+    const si=mk('案妹','female','30');
+    U(gf,gm,'married',[K(h),K(si)]);
+    U(h,w,'married',[]);
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[gf,gm,h,w]}];
+  }
+  else if(key==='threegen'){
+    const gf=mk('案父','male','68'), gm=mk('案母','female','65');
+    const h=mk('案主','male','42',{index:true}), w=mk('案妻','female','40');
     const c1=mk('長子','male','12'), c2=mk('次女','female','9');
     U(gf,gm,'married',[K(h)]);
     U(h,w,'married',[K(c1),K(c2)]);
     state.geno.circles=[{id:nid('c'),label:'同住',members:[gf,gm,h,w,c1,c2]}];
-  }
-  else if(key==='threegen'){
-    const gf=mk('祖父','male','78'), gm=mk('祖母','female','75');
-    const fa=mk('案父','male','50'), mo=mk('案母','female','48');
-    const me=mk('案主','male','20',{index:true}), si=mk('案妹','female','17');
-    U(gf,gm,'married',[K(fa)]);
-    U(fa,mo,'married',[K(me),K(si)]);
-    state.geno.circles=[{id:nid('c'),label:'同住',members:[gf,gm,fa,mo,me,si]}];
   }
   else if(key==='single'){
     const h=mk('案父','male','42'), w=mk('案主','female','40',{index:true});
@@ -1993,11 +2487,11 @@ function loadTemplate(key,quiet){
   }
   else if(key==='grand'){
     const gf=mk('祖父','male','70'), gm=mk('祖母','female','68');
-    const fa=mk('案父','male','44',{dead:true}), mo=mk('案母','female','42');
+    const fa=mk('案父','male','44'), mo=mk('案母','female','42');
     const me=mk('案主','male','12',{index:true});
     U(gf,gm,'married',[K(fa)]);
-    U(fa,mo,'separated',[K(me)]);
-    T(me,gm,'close');
+    U(fa,mo,'divorced',[K(me)]);
+    T(me,gm,'close'); T(me,fa,'distant');
     state.geno.circles=[{id:nid('c'),label:'祖孫同住',members:[gf,gm,me]}];
   }
   else if(key==='couple'){
@@ -2012,6 +2506,8 @@ function loadTemplate(key,quiet){
 loadTemplate('demo',true);
 HIST.past.length=0; HIST.future.length=0; updateHistBtns();   // 初始載入不算一步
 initMobile();
+autosaveArmed=false; clearTimeout(autoTimer);   // 初始載入範例不算使用者變更，不要覆蓋上次的自動儲存
+checkResume();
 </script>
 </body>
 </html>
