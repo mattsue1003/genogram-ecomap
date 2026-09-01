@@ -425,7 +425,7 @@ details.help .body b{color:var(--ink)}
         <div class="secbody">
           <div id="personList"></div>
           <button class="btn sm" onclick="addPerson()">＋ 新增成員</button>
-          <p class="hint">案主依慣例以灰底填滿；出生序自動由長到幼排列。用「↑↓」可手動調整登打順序。</p>
+          <p class="hint">案主依慣例以灰底填滿；出生序自動由長到幼排列。用「↑↓」可手動調整登打順序。<br>稱謂留空時，圖上不會顯示文字（簡易家系圖只放符號與年齡即可）。</p>
         </div>
       </div>
       <div class="sec" data-key="uni">
@@ -1711,8 +1711,9 @@ function buildGenogram(){
       if(p.dead) shape({shape:'rect',x:ax-bw/2,y:ay-bh/2,w:bw,h:bh,sw:0,stroke:fill,fill});  // 白底只在已故（叉叉）時需要
       text({cx:ax,cy:ay,w:GEN.NW*ns-10,t:shown,size:15*isz,bold:true,abs:true});
     }
-    text({cx:p.x,cy:p.y+hh+16*FS(),w:GEN.SLOT,t:label(p),size:13*FS(),bold:p.index,abs:true});
-    if(p.note) text({cx:p.x,cy:p.y+hh+30*FS(),w:GEN.SLOT,t:p.note,size:10.5*FS(),color:GREY,abs:true});
+    const hasName=!!(p.name&&p.name.trim());
+    if(hasName) text({cx:p.x,cy:p.y+hh+16*FS(),w:GEN.SLOT,t:p.name.trim(),size:13*FS(),bold:p.index,abs:true});
+    if(p.note) text({cx:p.x,cy:p.y+hh+(hasName?30:16)*FS(),w:GEN.SLOT,t:p.note,size:10.5*FS(),color:GREY,abs:true});
   });
   return size;
 }
@@ -2168,7 +2169,7 @@ function renderDraftMenu(){
   const m=document.getElementById('draftMenu');
   if(!lsOK){ m.innerHTML='<div class="empty">此瀏覽器不允許本機儲存（可能是無痕模式）。請改用「存檔 JSON」。</div>'; return; }
   const slots=getSlots();
-  const idxName=state.geno.persons.find(p=>p.index)?.name || state.eco.center || '';
+  const idxName=(state.geno.persons.find(p=>p.index)?.name||'').trim() || '';
   const defName=idxName?`${idxName}家庭`:'未命名';
   m.innerHTML=`
     <div class="auto">自動儲存${autoStamp?'：'+autoStamp:'（開啟中）'}</div>
@@ -2231,7 +2232,8 @@ async function exportDOCX(){
     const png=await svgToPngBlob(svg,2);
     const pngBuf=await png.arrayBuffer();
     const title=state.mode==='genogram'?'家系圖':'生態圖';
-    const idx=state.geno.persons.find(p=>p.index)?.name || state.eco.center || '';
+    const idxP=state.geno.persons.find(p=>p.index);
+    const idx=(idxP&&idxP.name&&idxP.name.trim()) ? idxP.name.trim() : (state.mode==='ecomap'?(state.eco.center||''):'');
     // 圖片以頁寬 16cm 為上限等比縮放（EMU：1cm = 360000）
     const maxW=16*360000, cx=Math.min(maxW, Math.round(SIZE.w/96*914400));
     const cy=Math.round(cx*SIZE.h/SIZE.w);
@@ -2311,8 +2313,8 @@ function importCenterFromGeno(announce){
   const idx=state.geno.persons.find(p=>p.index);
   if(!hh.length){ if(announce) toast('家系圖裡還沒有案主或成員'); return false; }
   snapshot();
-  state.eco.center = idx ? `${label(idx)}家庭` : '個案家庭';
-  state.eco.members = hh.map(label).join('、');
+  state.eco.center = (idx&&idx.name&&idx.name.trim()) ? `${idx.name.trim()}家庭` : '個案家庭';
+  state.eco.members = hh.map(p=>(p.name||'').trim()).filter(Boolean).join('、');
   const ec=document.getElementById('ecoCenter'), em=document.getElementById('ecoMembers');
   if(ec) ec.value=state.eco.center; if(em) em.value=state.eco.members;
   renderGenoLink(); render();
