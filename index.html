@@ -227,6 +227,11 @@ input[type=text],select{border:1px solid var(--line);border-radius:5px;padding:5
 .f-age{width:54px}
 .chk{font-size:12px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;color:#444;white-space:nowrap}
 .del{border:0;background:transparent;color:#c0392b;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
+.cirtools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
+.cirtools select{max-width:190px}
+.node.ring{cursor:move}
+.node.cp{cursor:grab}
+.cirtools input[type=range]{width:104px;accent-color:var(--accent,#7a8c7f)}
 .pick{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding-top:6px;border-top:1px dashed #e0dad0}
 .pick .lbl{font-size:11px;color:var(--muted);width:100%;margin-bottom:2px}
 .chip{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 9px;cursor:pointer;background:#fff;user-select:none}
@@ -346,6 +351,7 @@ details.help .body b{color:var(--ink)}
       <button onclick="loadTemplate('remarry')">重組家庭：再婚 + 前段子女</button>
       <button onclick="loadTemplate('grand')">隔代教養：祖父母帶孫（父母離婚未同住）</button>
       <button onclick="loadTemplate('couple')">兩人家庭：夫妻（無子女）</button>
+      <button onclick="loadTemplate('rotate')">輪住照顧：長輩在兩個子女家輪流住</button>
       <div class="tpl-note">載入會清空目前畫面。想保留請先「存檔 JSON」。</div>
     </div>
   </span>
@@ -448,7 +454,7 @@ details.help .body b{color:var(--ink)}
         <div class="secbody">
           <div id="circleList"></div>
           <button class="btn sm" onclick="addCircle()">＋ 新增生活圈</button>
-          <p class="hint">圈起來的成員代表同住或關係密切。若圈線穿過非圈內的人，拖曳該成員讓開即可。</p>
+          <p class="hint">圈起來的成員代表同住或關係密切。同一人可以同時在兩個圈裡（例如長輩在子女家輪住），輪住或部分時間同住可把框線改成「虛線」。<br>要調形狀：在右側預覽圖上按住框線拖一下，框線會變成幾個白色控制點，拖點就能改形狀（在線上按住可加點、雙擊點可刪點；Shift＋拖是整圈平移）。控制點拖到會讓圈內成員跑出去、或把非成員圈進來的位置時會停住，所以左欄勾的成員永遠正確；改了成員名單則會回到自動形狀。</p>
         </div>
       </div>
       </div><!-- /formWrap -->
@@ -733,8 +739,24 @@ function syncUI(){
     <div class="row">
       <div class="top">
         <input type="text" class="f-name" placeholder="標註，例：同住" value="${esc(c.label)}"
-               oninput="CI('${c.id}').label=this.value;render()">
+               onfocus="snapshot()" oninput="CI('${c.id}').label=this.value;render()">
         <button class="del" onclick="del(state.geno.circles,'${c.id}')">✕</button>
+      </div>
+      <div class="cirtools">
+        <label class="chk">框線
+          <select onchange="snapshot();CI('${c.id}').dashed=(this.value==='dash');render()">
+            <option value="solid" ${c.dashed?'':'selected'}>實線</option>
+            <option value="dash" ${c.dashed?'selected':''}>虛線（輪住／部分時間同住）</option>
+          </select>
+        </label>
+        ${c.shape
+          ? `<span class="lbl" style="font-size:11px;color:var(--muted)">手動形狀（拖預覽圖上的白點）</span>
+             <button class="btn sm" onclick="snapshot();Object.assign(CI('${c.id}'),{dx:0,dy:0,shape:null});render();syncUI()">恢復自動形狀</button>`
+          : `<label class="chk">寬鬆
+               <input type="range" min="-24" max="72" step="4" value="${c.grow||0}"
+                      onpointerdown="snapshot()" oninput="CI('${c.id}').grow=+this.value;render()">
+             </label>
+             <button class="btn sm" onclick="snapshot();Object.assign(CI('${c.id}'),{dx:0,dy:0,grow:0});render();syncUI()">重設框線</button>`}
       </div>
       <div class="pick">
         <span class="lbl">圈內成員</span>
@@ -791,6 +813,7 @@ function toggleMember(cid,pid){
   snapshot();
   const c=CI(cid), i=c.members.indexOf(pid);
   i>-1 ? c.members.splice(i,1) : c.members.push(pid);
+  c.shape=null;                                         // 成員變了 → 回到自動輪廓，確保規則正確
   syncUI();
 }
 function autoSort(){ optSort.checked ? autoLayout() : render(); }
@@ -1426,9 +1449,10 @@ function trim(x1,y1,x2,y2,r1,r2){
 /* ---- 生活圈：凸包＋平滑 ---- */
 /* 生活圈輪廓（平滑場法）：成員各發出一團平滑的正場、相鄰成員之間鋪橋、非成員發出負場把輪廓推開，
    再對場取等值線 → 得到圓潤、會避開非成員、成員拉遠也不會出現細脖子或孔洞的輪廓 */
-function circleOutlines(members, others, HW, HH){
+function circleOutlines(members, others, HW, HH, opt){
   const CELL=6, T=0.42;
-  const R=92, RN=50, KN=1.6, RC=34;
+  const grow=(opt&&opt.grow)||0;                      // 使用者調整的「寬鬆度」（px）
+  const R=Math.max(46, 92+grow*2.8), RN=44, KN=1.6, RC=34;
   const labelDrop=26*FS();
   const sq=v=>v>0?v*v:0;
   const rectDist=(px,py,b)=>{ const dx=Math.max(b[0]-px,0,px-b[2]), dy=Math.max(b[1]-py,0,py-b[3]); return Math.hypot(dx,dy); };
@@ -1446,8 +1470,8 @@ function circleOutlines(members, others, HW, HH){
     const stacked=dy<=GEN.GENH*2.3 && dx<=GEN.SLOT*2.2;
     if(!sameRow && !stacked) continue;
     const narrow=dy>GEN.GENH*1.25;                      // 隔一代：從中間那排的人之間穿過
-    if(ob.some(o=>segHits(a.x,a.y,b.x,b.y,o,narrow?4:10))) continue;
-    bridges.push([a.x,a.y,b.x,b.y, narrow?20:RC, narrow?1.7:1.0]);
+    if(ob.some(o=>segHits(a.x,a.y,b.x,b.y,o,2))) continue;   // 只擋「真的穿過」非成員方框的橋；擦邊由負場自動推開
+    bridges.push([a.x,a.y,b.x,b.y, narrow?20:RC, narrow?1.8:1.3]);
   }
   const field=(x,y)=>{
     let f=0;
@@ -1542,6 +1566,64 @@ function halfW(p,atY){
   return hw;                                                                                   // 方形
 }
 const HW_=GEN.NW/2, HH_=GEN.NH/2;
+
+/* ---- 生活圈：手動形狀（少量控制點 + 平滑閉合曲線） ----
+   自動輪廓只是起點；使用者一拉框線，就把輪廓簡化成 6～16 個控制點，之後拖控制點改形狀。
+   控制點以「成員外框」為座標基準存起來，成員拖動時形狀會跟著伸縮。
+   規則保護：控制點拖到會讓圈內成員跑出去、或把非成員圈進來的位置時，拖曳會停在最後一個合法位置。 */
+const memberBox=(mem,HW,HH)=>[Math.min(...mem.map(p=>p.x))-HW, Math.min(...mem.map(p=>p.y))-HH,
+                              Math.max(...mem.map(p=>p.x))+HW, Math.max(...mem.map(p=>p.y))+HH];
+function shapePts(c,box){                                   // 把存的控制點對應到目前成員外框
+  const sh=c.shape, b0=sh.box;
+  if(!b0||(b0[0]===box[0]&&b0[1]===box[1]&&b0[2]===box[2]&&b0[3]===box[3])) return sh.pts.map(q=>[q[0],q[1]]);
+  const sx=(box[2]-box[0])/((b0[2]-b0[0])||1), sy=(box[3]-box[1])/((b0[3]-b0[1])||1);
+  return sh.pts.map(q=>[box[0]+(q[0]-b0[0])*sx, box[1]+(q[1]-b0[1])*sy]);
+}
+function smoothClosed(pts,seg=12){                          // Catmull-Rom 閉合曲線 → 多邊形；每個頂點記下所屬控制點區段
+  const n=pts.length, out=[];
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n], p1=pts[i], p2=pts[(i+1)%n], p3=pts[(i+2)%n];
+    for(let k=0;k<seg;k++){ const t=k/seg, t2=t*t, t3=t2*t;
+      const x=0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3);
+      const y=0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3);
+      const q=[x,y]; q.span=i; out.push(q); }
+  }
+  return out;
+}
+function resampleLoop(loop,n){                              // 依弧長均勻取 n 個控制點
+  const L=[0]; for(let i=1;i<=loop.length;i++){ const a=loop[i-1], b=loop[i%loop.length]; L.push(L[i-1]+Math.hypot(b[0]-a[0],b[1]-a[1])); }
+  const total=L[loop.length], out=[]; let j=0;
+  for(let k=0;k<n;k++){ const t=total*k/n; while(j<loop.length-1&&L[j+1]<t) j++;
+    const a=loop[j], b=loop[(j+1)%loop.length], u=(t-L[j])/((L[j+1]-L[j])||1);
+    out.push([Math.round(a[0]+(b[0]-a[0])*u), Math.round(a[1]+(b[1]-a[1])*u)]); }
+  return out;
+}
+const ptInPoly=(x,y,pts)=>{ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+  const [xi,yi]=pts[i],[xj,yj]=pts[j]; if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi)) c=!c; } return c; };
+function shapeValid(poly,mem,others,HW,HH){                 // 圈內成員四角都在圈內；非成員四角都在圈外
+  const drop=22*FS(), corners=p=>[[p.x-HW,p.y-HH],[p.x+HW,p.y-HH],[p.x-HW,p.y+HH+drop],[p.x+HW,p.y+HH+drop]];
+  if(!mem.every(p=>corners(p).every(([x,y])=>ptInPoly(x,y,poly)))) return false;
+  if(others.some(p=>corners(p).some(([x,y])=>ptInPoly(x,y,poly)))) return false;
+  return true;
+}
+function circleGeometry(c){                                 // 回傳 {mem, others, box, ctrl(控制點，含平移) , poly(含平移)}
+  const ps=state.geno.persons, HW=GEN.NW/2, HH=GEN.NH/2;
+  const mem=c.members.map(P).filter(Boolean); if(!mem.length) return null;
+  const others=ps.filter(p=>!mem.includes(p)), box=memberBox(mem,HW,HH), dx=c.dx||0, dy=c.dy||0;
+  if(!c.shape) return {mem,others,box,HW,HH,dx,dy};
+  const base=shapePts(c,box);
+  return {mem,others,box,HW,HH,dx,dy,base,ctrl:base.map(q=>[q[0]+dx,q[1]+dy]),poly:smoothClosed(base).map(q=>{const r=[q[0]+dx,q[1]+dy]; r.span=q.span; return r;})};
+}
+function toManualShape(c){                                  // 自動輪廓 → 控制點（取最大的一圈）
+  const g=circleGeometry(c); if(!g||c.shape) return;
+  const loops=circleOutlines(g.mem,g.others,g.HW,g.HH,{grow:c.grow||0});
+  if(!loops.length) return;
+  const area=l=>{let a=0;for(let i=0;i<l.length;i++){const p=l[i],q=l[(i+1)%l.length];a+=p[0]*q[1]-q[0]*p[1];}return Math.abs(a)/2;};
+  const loop=loops.reduce((a,b)=>area(b)>area(a)?b:a);
+  let per=0; for(let i=0;i<loop.length;i++){ const a=loop[i],b=loop[(i+1)%loop.length]; per+=Math.hypot(b[0]-a[0],b[1]-a[1]); }
+  const n=Math.max(6,Math.min(16,Math.round(per/95)));
+  c.shape={pts:resampleLoop(loop,n),box:g.box};
+}
 function buildGenogram(){
   const size=computeGeno();
   const ps=state.geno.persons, us=state.geno.unions;
@@ -1557,11 +1639,15 @@ function buildGenogram(){
     const mem=c.members.map(P).filter(Boolean);
     if(mem.length<1) return;
     const others=ps.filter(p=>!mem.includes(p));
-    const loops=circleOutlines(mem, others, HW, HH);
+    const dx=c.dx||0, dy=c.dy||0;
+    let loops;
+    if(c.shape){ const g=circleGeometry(c); loops=[g.poly.map(q=>[q[0],q[1]])]; }
+    else{
+      const raw=circleOutlines(mem, others, HW, HH, {grow:c.grow||0});
+      loops=(dx||dy) ? raw.map(loop=>loop.map(q=>[q[0]+dx,q[1]+dy])) : raw;
+    }
     loops.forEach(loop=>{
-      for(let i=0;i<loop.length;i++){ const a=loop[i], b=loop[(i+1)%loop.length];
-        line({x1:a[0],y1:a[1],x2:b[0],y2:b[1],sw:1.5,stroke:col.ring,ring:true}); }
-      D.push({k:'ringpath',pts:loop,stroke:col.ring});          // PPTX 用：單一可編輯的不規則形
+      D.push({k:'ringpath',pts:loop,stroke:col.ring,dashed:!!c.dashed,cid:c.id});   // SVG 畫成單一 polygon；PPTX 畫成單一自訂形狀
     });
     if(loops.length && c.label){
       const all=loops.flat(); const bot=all.reduce((a,b)=>b[1]>a[1]?b:a,all[0]);
@@ -1855,6 +1941,9 @@ function render(){
       if(o.shape==='triangle') body+=`<polygon points="${o.x+o.w/2},${o.y} ${o.x+o.w},${o.y+o.h} ${o.x},${o.y+o.h}" ${st}/>`;
       if(o.shape==='diamond') body+=`<polygon points="${o.x+o.w/2},${o.y} ${o.x+o.w},${o.y+o.h/2} ${o.x+o.w/2},${o.y+o.h} ${o.x},${o.y+o.h/2}" ${st}/>`;
     }
+    if(o.k==='ringpath'){
+      body+=`<polygon points="${o.pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="${o.stroke}" stroke-width="1.5" stroke-linejoin="round"${o.dashed?' stroke-dasharray="8 6"':''}/>`;
+    }
     if(o.k==='poly'){
       body+=`<polygon points="${o.pts.map(q=>q[0]+','+q[1]).join(' ')}" fill="${o.fill}" stroke="${o.stroke}" stroke-width="0.5"/>`;
     }
@@ -1863,10 +1952,18 @@ function render(){
   });
   let handles='';
   if(state.mode==='genogram')
+    D.filter(o=>o.k==='ringpath'&&o.cid).forEach(o=>{      // 生活圈框線：沿線一條透明粗線，方便直接拖曳
+      handles+=`<polygon class="node ring" data-id="${o.cid}" data-kind="c" fill="none" stroke="transparent" stroke-width="18" points="${o.pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}"/>`;
+    });
+  if(state.mode==='genogram')
     state.geno.persons.forEach(p=>{ const ns=nodeScale(p);
       handles+=`<rect class="node" data-id="${p.id}" data-kind="p" x="${p.x-GEN.NW*ns/2}" y="${p.y-GEN.NH*ns/2}" width="${GEN.NW*ns}" height="${GEN.NH*ns}" fill="transparent"/>`; });
   else
     state.eco.systems.forEach(s=>handles+=`<circle class="node" data-id="${s.id}" data-kind="s" cx="${s.x}" cy="${s.y}" r="${ECO.SR}" fill="transparent"/>`);
+  if(state.mode==='genogram')                            // 手動形狀的控制點（匯出時會一併拿掉）
+    state.geno.circles.forEach(c=>{ if(!c.shape) return; const g=circleGeometry(c); if(!g) return;
+      g.ctrl.forEach((q,i)=>{ handles+=`<circle class="node cp" data-id="${c.id}" data-kind="cp" data-idx="${i}" cx="${q[0]}" cy="${q[1]}" r="6" fill="#fff" stroke="${C().ring}" stroke-width="1.8"/>`; });
+    });
 
   const bg = optAlpha.checked ? '' : `<rect width="100%" height="100%" fill="#ffffff"/>`;
   canvasWrap.innerHTML=
@@ -1890,21 +1987,64 @@ function svgPoint(e){
 function bindDrag(){
   document.querySelectorAll('#fig .node').forEach(el=>{
     el.addEventListener('pointerdown',e=>{
+      if(el.dataset.kind==='c'){                       // 生活圈框線：按住拉 → 進入手動形狀並拖最近的控制點；Shift 拖 → 整圈平移
+        const c=CI(el.dataset.id); if(!c) return;
+        const q=svgPoint(e); if(!q) return;
+        snapshot(); e.preventDefault();
+        if(e.shiftKey){ drag={circle:c}; dragOff={x:q.x-(c.dx||0),y:q.y-(c.dy||0)}; return; }
+        if(!c.shape){ toManualShape(c); if(!c.shape) return; }
+        let g=circleGeometry(c);
+        let idx=0, best=1e9; g.ctrl.forEach((p,i)=>{ const d=Math.hypot(p[0]-q.x,p[1]-q.y); if(d<best){best=d;idx=i;} });
+        if(best>30){                                   // 離控制點太遠：在按下的地方新增一個控制點
+          let vi=0, vb=1e9; g.poly.forEach((p,i)=>{ const d=Math.hypot(p[0]-q.x,p[1]-q.y); if(d<vb){vb=d;vi=i;} });
+          const span=g.poly[vi].span;
+          c.shape={pts:g.base.map(p=>[p[0],p[1]]),box:g.box};
+          c.shape.pts.splice(span+1,0,[Math.round(q.x-(c.dx||0)),Math.round(q.y-(c.dy||0))]); idx=span+1;
+          g=circleGeometry(c);
+        }else c.shape={pts:g.base.map(p=>[p[0],p[1]]),box:g.box};   // 以目前成員外框重新定基準
+        drag={cp:idx,circle:c,last:c.shape.pts[idx].slice()}; render(); return;
+      }
+      if(el.dataset.kind==='cp'){                      // 拖既有控制點
+        const c=CI(el.dataset.id); if(!c||!c.shape) return;
+        const g=circleGeometry(c); c.shape={pts:g.base.map(p=>[p[0],p[1]]),box:g.box};
+        const idx=+el.dataset.idx; snapshot(); drag={cp:idx,circle:c,last:c.shape.pts[idx].slice()}; e.preventDefault(); return;
+      }
       drag = el.dataset.kind==='p' ? P(el.dataset.id) : S(el.dataset.id);
       if(!drag) return;
       const q=svgPoint(e); if(!q) return;
       snapshot();
       dragOff={x:q.x-drag.x,y:q.y-drag.y}; drag.pinned=true; e.preventDefault();
     });
+    if(el.dataset.kind==='cp') el.addEventListener('dblclick',e=>{     // 雙擊控制點：移除（至少留 4 點）
+      const c=CI(el.dataset.id); if(!c||!c.shape||c.shape.pts.length<=4) return;
+      const g=circleGeometry(c); const pts=g.base.map(p=>[p[0],p[1]]); pts.splice(+el.dataset.idx,1);
+      const poly=smoothClosed(pts); if(!shapeValid(poly,g.mem,g.others,g.HW,g.HH)) return;
+      snapshot(); c.shape={pts,box:g.box}; render(); e.preventDefault();
+    });
   });
 }
 document.addEventListener('pointermove',e=>{
   if(!drag) return;
   const q=svgPoint(e); if(!q) return;
-  drag.x=Math.round(q.x-dragOff.x); drag.y=Math.round(q.y-dragOff.y); render();
+  if(drag.cp!==undefined){                              // 拖控制點：違反圈內／圈外規則的位置不接受，停在最後合法位置
+    const c=drag.circle, g=circleGeometry(c), pts=c.shape.pts;
+    const nx=Math.round(q.x-g.dx), ny=Math.round(q.y-g.dy);
+    const trial=pts.map(p=>[p[0],p[1]]); trial[drag.cp]=[nx,ny];
+    if(shapeValid(smoothClosed(trial),g.mem,g.others,g.HW,g.HH)){ pts[drag.cp]=[nx,ny]; drag.last=[nx,ny]; }
+    else pts[drag.cp]=drag.last.slice();
+    render(); return;
+  }
+  if(drag.circle){ drag.circle.dx=Math.round(q.x-dragOff.x); drag.circle.dy=Math.round(q.y-dragOff.y); render(); return; }
+  drag.x=Math.round(q.x-dragOff.x); drag.y=Math.round(q.y-dragOff.y);
+  if(state.mode==='genogram') state.geno.circles.forEach(c=>{   // 成員拖動後手動形狀若已違反圈內／圈外規則 → 回到自動輪廓
+    if(!c.shape) return; const g=circleGeometry(c); if(!g) return;
+    if(!shapeValid(g.poly,g.mem,g.others,g.HW,g.HH)) c.shape=null;
+  });
+  render();
 });
-document.addEventListener('pointerup',()=>drag=null);
-document.addEventListener('pointercancel',()=>drag=null);
+function endDrag(){ drag=null; }
+document.addEventListener('pointerup',endDrag);
+document.addEventListener('pointercancel',endDrag);
 
 /* ===================== 匯出 ===================== */
 const stamp=()=>new Date().toISOString().slice(0,10);
@@ -2029,7 +2169,7 @@ function exportPPTX(){
       const pts=o.pts.filter((_,i)=>i%3===0).map(q=>({x:L(q[0]-x0),y:L(q[1]-y0)}));
       pts.push({close:true});
       slide.addShape('custGeom',{x:X(x0),y:Y(y0),w:L(w0),h:L(h0),points:pts,
-        fill:{type:'none'},line:{color:hex(o.stroke),width:1}});
+        fill:{type:'none'},line:{color:hex(o.stroke),width:1,dashType:o.dashed?'dash':'solid'}});
     }
     if(o.k==='line'){
       if(o.ring) return;
@@ -2436,7 +2576,7 @@ function loadTemplate(key,quiet){
   const U=(a,b,type,children=[])=>state.geno.unions.push({id:nid('u'),a,b,type,children});
   const T=(a,b,type)=>state.geno.ties.push({id:nid('t'),a,b,type});
   const names={demo:'示範案例',nuclear:'核心家庭',twogen:'兩代同堂',threegen:'三代同堂',
-    single:'單親家庭',remarry:'重組家庭',grand:'隔代教養',couple:'兩人家庭'};
+    single:'單親家庭',remarry:'重組家庭',grand:'隔代教養',couple:'兩人家庭',rotate:'輪住照顧'};
 
   if(key==='demo'){
     const gf=mk('祖父','male','82',{dead:true}), gm=mk('祖母','female','79',{ill:true});
@@ -2495,6 +2635,20 @@ function loadTemplate(key,quiet){
     U(fa,mo,'divorced',[K(me)]);
     T(me,gm,'close'); T(me,fa,'distant');
     state.geno.circles=[{id:nid('c'),label:'祖孫同住',members:[gf,gm,me]}];
+  }
+  else if(key==='rotate'){
+    const mo=mk('案主','female','78',{index:true,note:'長子家、次子家單雙月輪住'});
+    const fa=mk('案夫','male','80',{dead:true});
+    const s1=mk('長子','male','52'), w1=mk('長媳','female','50'), g1=mk('孫','male','20');
+    const s2=mk('次子','male','48'), w2=mk('次媳','female','46');
+    U(fa,mo,'married',[K(s1),K(s2)]);
+    U(s1,w1,'married',[K(g1)]);
+    U(s2,w2,'married',[]);
+    T(mo,s1,'close'); T(mo,s2,'close');
+    state.geno.circles=[
+      {id:nid('c'),label:'長子家（輪住）',members:[mo,s1,w1,g1],dashed:true},
+      {id:nid('c'),label:'次子家（輪住）',members:[mo,s2,w2],dashed:true}
+    ];
   }
   else if(key==='couple'){
     const h=mk('案主','male','52',{index:true}), w=mk('案妻','female','50');
