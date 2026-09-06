@@ -144,6 +144,8 @@ main{flex:1;display:flex;min-height:0}
 .tpl-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;background:#fff;border:1px solid var(--line);
   border-radius:10px;box-shadow:0 8px 28px rgba(18,52,59,.2);padding:6px;width:280px;display:none}
 .tpl-menu.on{display:block}
+.tpl-menu{max-height:calc(100vh - 110px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}   /* 項目多時可捲動 */
+.tpl-menu .sheet-bar{display:none}
 .tpl-menu .tpl-head{font-size:11px;color:var(--muted);padding:6px 8px 4px}
 .tpl-menu button{display:block;width:100%;text-align:left;border:0;background:0;padding:8px 10px;border-radius:6px;
   cursor:pointer;font-size:12.5px;font-family:var(--font);color:var(--text)}
@@ -337,7 +339,14 @@ kbd{display:inline-block;border:1px solid #cfc8bb;border-bottom-width:2px;border
   .hdr-actions .btn.primary{color:#fff;background:var(--orange);border-color:var(--orange)}
   .hdr-actions .tpl-wrap{display:block}
   .hdr-actions .tpl-wrap>.btn{width:100%}
-  .tpl-menu{left:0;right:0;width:auto}
+  /* 範本／暫存選單 → 底部抽屜，可整段捲動 */
+  .tpl-menu.on{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:80vh;overflow-y:auto;
+    border-radius:16px 16px 0 0;z-index:95;box-shadow:0 -12px 40px rgba(18,52,59,.35);padding:0 10px calc(14px + env(safe-area-inset-bottom))}
+  .tpl-menu .sheet-bar{display:flex;position:sticky;top:0;background:#fff;z-index:1;align-items:center;justify-content:space-between;
+    padding:12px 4px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;font-weight:700;font-size:15px;color:var(--ink)}
+  .tpl-menu .sheet-bar button{width:auto;padding:6px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;color:var(--text);background:#fff}
+  .tpl-menu>button{padding:12px 10px;font-size:15px;line-height:1.45}
+  .tpl-menu .tpl-head{font-size:12px;padding:12px 8px 4px}
   /* 主區：一次只顯示一側，全螢幕 */
   main{flex-direction:column;height:calc(100% - 52px);padding-bottom:64px}
   #side,#stage{width:100%;flex:1 1 auto;max-height:none;border:0}
@@ -384,6 +393,7 @@ kbd{display:inline-block;border:1px solid #cfc8bb;border-bottom-width:2px;border
   <span class="tpl-wrap">
     <button class="btn ghost" onclick="toggleTplMenu(event)">範本 ▾</button>
     <div id="tplMenu" class="tpl-menu">
+      <div class="sheet-bar"><span>選擇範本</span><button type="button" onclick="document.getElementById('tplMenu').classList.remove('on')">關閉</button></div>
       <div class="tpl-head">最常見（由常見到少見排列，載入後可直接改）</div>
       <button onclick="loadTemplate('demo')">完整示範案例（三代 + 情感 + 生活圈 + 生態圖）</button>
       <button onclick="loadTemplate('nuclear')">核心家庭：夫妻 + 子女</button>
