@@ -237,6 +237,11 @@ input[type=text],select{border:1px solid var(--line);border-radius:5px;padding:5
 .node.ntail{cursor:grab}
 .noterow textarea{width:100%;min-height:52px;resize:vertical;font:inherit;font-size:12.5px;line-height:1.5;padding:6px 8px;border:1px solid #d8d2c6;border-radius:6px;background:#fffdf7}
 .noterow .rowline{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.swatches{display:inline-flex;gap:4px;align-items:center}
+.swatches .sw{width:20px;height:20px;border-radius:50%;border:1.5px solid #999;padding:0;cursor:pointer;position:relative;box-sizing:border-box}
+.swatches .sw.on{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--amber)}
+.swatches .sw.custom{overflow:hidden;border-color:#aaa}
+.swatches .sw.custom input{position:absolute;inset:-6px;width:40px;height:40px;opacity:0;cursor:pointer}
 .cirtools input[type=range]{width:104px;accent-color:var(--accent,#7a8c7f)}
 .pick{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding-top:6px;border-top:1px dashed #e0dad0}
 .pick .lbl{font-size:11px;color:var(--muted);width:100%;margin-bottom:2px}
@@ -379,16 +384,34 @@ kbd{display:inline-block;border:1px solid #cfc8bb;border-bottom-width:2px;border
   <span class="tpl-wrap">
     <button class="btn ghost" onclick="toggleTplMenu(event)">範本 ▾</button>
     <div id="tplMenu" class="tpl-menu">
-      <div class="tpl-head">常見家庭結構（載入後可直接改）</div>
-      <button onclick="loadTemplate('demo')">完整示範案例（三代 + 情感 + 生活圈）</button>
+      <div class="tpl-head">最常見（由常見到少見排列，載入後可直接改）</div>
+      <button onclick="loadTemplate('demo')">完整示範案例（三代 + 情感 + 生活圈 + 生態圖）</button>
       <button onclick="loadTemplate('nuclear')">核心家庭：夫妻 + 子女</button>
-      <button onclick="loadTemplate('twogen')">兩代同堂：案主夫妻與案父母同住（無子女）</button>
       <button onclick="loadTemplate('threegen')">三代同堂：案父母 + 案主夫妻 + 子女</button>
-      <button onclick="loadTemplate('single')">單親家庭：離婚 + 子女</button>
+      <button onclick="loadTemplate('single')">單親（離婚）：母親帶子女</button>
+      <button onclick="loadTemplate('twogen')">兩代同堂：成年子女與父母同住（無孫）</button>
       <button onclick="loadTemplate('remarry')">重組家庭：再婚 + 前段子女</button>
-      <button onclick="loadTemplate('grand')">隔代教養：祖父母帶孫（父母離婚未同住）</button>
+      <button onclick="loadTemplate('widow')">單親（喪偶）：配偶已故 + 子女</button>
       <button onclick="loadTemplate('couple')">兩人家庭：夫妻（無子女）</button>
+      <div class="tpl-head">長照／老人常見</div>
+      <button onclick="loadTemplate('elderalone')">獨居長者：子女在外地，鄰里與居服支持</button>
+      <button onclick="loadTemplate('elderpair')">老老照顧：老夫妻相互照顧，子女未同住</button>
       <button onclick="loadTemplate('rotate')">輪住照顧：長輩在兩個子女家輪流住</button>
+      <button onclick="loadTemplate('dualaging')">雙老家庭：年邁父母 + 成年身障子女同住</button>
+      <button onclick="loadTemplate('caregiver')">主要照顧者：失智母親由未婚女兒照顧，手足未分擔</button>
+      <div class="tpl-head">兒少與家庭</div>
+      <button onclick="loadTemplate('grand')">隔代教養：祖父母帶孫（父母離婚未同住）</button>
+      <button onclick="loadTemplate('cohabit')">同居家庭：未婚同居 + 子女</button>
+      <button onclick="loadTemplate('newresident')">新住民家庭：跨國婚姻 + 夫家父母同住</button>
+      <button onclick="loadTemplate('separated')">分居家庭：父母分居，子女輪流照顧</button>
+      <button onclick="loadTemplate('adopt')">收養家庭：夫妻 + 收養子女</button>
+      <button onclick="loadTemplate('foster')">寄養／安置：原生家庭 + 寄養家庭</button>
+      <button onclick="loadTemplate('conflict')">高衝突家庭：衝突、疏遠與溝通中斷示範</button>
+      <div class="tpl-head">其他結構</div>
+      <button onclick="loadTemplate('samesex')">同性伴侶家庭：伴侶 + 子女</button>
+      <button onclick="loadTemplate('singleperson')">獨居單身：未婚，與原生家庭往來</button>
+      <button onclick="loadTemplate('multi')">多段婚姻：三段關係、各有子女</button>
+      <button onclick="loadTemplate('twins')">多胞胎家庭：夫妻 + 雙胞胎</button>
       <div class="tpl-note">載入會清空目前畫面。想保留請先「存檔 JSON」。</div>
     </div>
   </span>
@@ -543,7 +566,7 @@ kbd{display:inline-block;border:1px solid #cfc8bb;border-bottom-width:2px;border
       <div class="body">
         <p><b>移動與微調</b>：預覽圖上的成員、外部系統、備註都可以直接拖曳。點一下選取後，用鍵盤 <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> 每次移動 1px，按住 <kbd>Shift</kbd> 每次 10px；<kbd>Esc</kbd> 取消選取。</p>
         <p><b>生活圈形狀</b>：平常由圈內成員自動算出輪廓。把游標移到框線上會出現白色控制點；按住框線拖一下就進入手動形狀，拖控制點改形狀。在線上沒有點的地方按住可以加點，雙擊控制點可以刪點（至少留 4 點），按住 <kbd>Shift</kbd> 拖框線是整圈平移。控制點拖到會讓圈內成員跑出去、或把非成員圈進來的位置時會停住，所以左欄勾選的成員永遠正確；改了成員名單會回到自動形狀，左欄的「恢復自動形狀」也可以隨時回到自動。</p>
-        <p><b>文字備註</b>：左欄「文字備註」新增後，會在圖上出現對話方塊，可換行、選字級與類別（觀察／待辦／風險，附圖例時會一起列出）。拖方塊移動位置、拖小圓點改變尖端指向；雙擊方塊會跳到左欄編輯。</p>
+        <p><b>文字備註</b>：左欄「文字備註」新增後，會在圖上出現對話方塊，可換行、選字級與顏色（預設白色；黃＝觀察、綠＝優勢／資源、藍＝待辦、紅＝風險、灰＝補充只是建議用途，也可自訂任何顏色；附圖例時，有用到的顏色會列在圖例）。拖方塊移動位置、拖小圓點改變尖端指向；雙擊方塊會跳到左欄編輯。</p>
         <p><b>成員很多時</b>：「成員」區上方有搜尋框，輸入稱謂或姓名就只顯示符合的人；點區塊標題可以收合。</p>
         <p><b>匯出</b>：SVG 在 Word／PPT 裡「轉換成圖形」後每個物件都能編輯；PPTX 直接是可編輯物件；備註在 PPTX 裡是一個多行文字框。</p>
       </div>
@@ -673,7 +696,7 @@ function addNote(d={}){
   const list=curNotes(), k=list.length, mob=isMobile();
   const pos=mob ? {x:16+(k%2)*150,y:SIZE.h+16+Math.floor(k/2)*64,tdx:40,tdy:-24}   // 手機：放在圖下方，看圖時往下捲就看得到
                 : {x:SIZE.w+16,y:16+k*64,tdx:-24,tdy:44};                             // 電腦：放在圖右側空白處
-  list.push(Object.assign({id:nid('n'),text:'備註',tail:true},pos,d));
+  list.push(Object.assign({id:nid('n'),text:'備註',tail:true,kind:'white'},pos,d));
   syncUI(); render();
   if(mob && !d.text) toast('備註已加入；打完字切到「看圖」拖曳到想放的位置');
   setTimeout(()=>{ const el=document.getElementById('nt_'+list[list.length-1].id); if(el){ el.focus(); el.select(); } },0);
@@ -688,10 +711,12 @@ function noteList(){
       <textarea id="nt_${n.id}" placeholder="輸入備註內容，可換行" onfocus="snapshot()" oninput="NT('${n.id}').text=this.value;render()">${esc(n.text)}</textarea>
       <div class="rowline">
         <label class="chk"><input type="checkbox" ${n.tail!==false?'checked':''} onchange="snapshot();NT('${n.id}').tail=this.checked;render()"> 指示尖端</label>
-        <label class="chk">類別
-          <select onchange="snapshot();NT('${n.id}').kind=this.value;render()">
-            ${Object.entries(NOTE_KINDS).map(([k,v])=>`<option value="${k}" ${(n.kind||'obs')===k?'selected':''}>${v.label}</option>`).join('')}
-          </select></label>
+        <span class="swatches" title="顏色（白色為預設；其他顏色僅是建議用途）">
+          ${Object.entries(NOTE_KINDS).filter(([k])=>k!=='custom').map(([k,v])=>`<button type="button" class="sw${(n.kind||'white')===k?' on':''}" style="background:${v.fill};border-color:${v.stroke}" title="${v.label}" onclick="snapshot();NT('${n.id}').kind='${k}';render();syncUI()"></button>`).join('')}
+          <label class="sw custom${n.kind==='custom'?' on':''}" title="自訂顏色" style="background:${n.kind==='custom'?(n.fill||'#fff'):'linear-gradient(135deg,#f6c,#6cf,#fc6)'}">
+            <input type="color" value="${n.kind==='custom'?(n.fill||'#ffffff'):'#ffffff'}" oninput="const o=NT('${n.id}');o.kind='custom';o.fill=this.value;render()" onchange="snapshot();syncUI()">
+          </label>
+        </span>
         <label class="chk">字級
           <select onchange="snapshot();NT('${n.id}').fs=+this.value;render()">
             ${[10,11,12,13,14,16].map(v=>`<option value="${v}" ${(n.fs||12)===v?'selected':''}>${v}</option>`).join('')}
@@ -1992,7 +2017,12 @@ function wrap(s,per){ const o=[]; for(let i=0;i<s.length;i+=per) o.push(s.slice(
 
 /* ---- 圖例 ---- */
 const LGw=()=>Math.round(142*FS()), LRh=()=>Math.round(30*FS());
-const noteLegendItems=()=>{ const used=new Set(curNotes().map(n=>n.kind||'obs')); return Object.keys(NOTE_KINDS).filter(k=>used.has(k)).map(k=>['note:'+k,'備註：'+NOTE_KINDS[k].label]); };
+const noteLegendItems=()=>{                          // 有用到的顏色才列；白色是預設，單獨用白色時不佔圖例
+  const notes=curNotes(); if(!notes.length) return [];
+  const kinds=[...new Set(notes.map(n=>n.kind==='custom'?('#'+(n.fill||'#ffffff').replace('#','')):(n.kind||'white')))];
+  if(kinds.length===1&&kinds[0]==='white') return [];
+  return kinds.map(k=>k.startsWith('#')?['note:'+k,'備註']:['note:'+k,'備註：'+NOTE_KINDS[k].label]);
+};
 const legendItems=()=>[...legendItemsBase(),...noteLegendItems()];
 const legendItemsBase=()=>state.mode==='genogram'
   ? [['rect','男'],['ellipse','女'],['tri','不確定／懷孕'],['pet','伴侶動物'],['shade','案主'],['dead','已故'],['ill','身障慢病'],
@@ -2040,7 +2070,7 @@ function legend(w,top){
     else if(k==='cut'){ line({x1:x,y1:y,x2:x+9,y2:y,sw:1.6}); line({x1:x+17,y1:y,x2:x+26,y2:y,sw:1.6});
                         [9,17].forEach(o=>line({x1:x+o,y1:y-6,x2:x+o,y2:y+6,sw:1.6})); }
     else if(k==='ring') shape({shape:'ellipse',x,y:y-8,w:26,h:16,sw:1.5,stroke:col.ring});
-    else if(k.startsWith('note:')){ const st=NOTE_KINDS[k.slice(5)]; shape({shape:'rect',x,y:y-8,w:26,h:16,sw:1.2,fill:st.fill,stroke:st.stroke}); }
+    else if(k.startsWith('note:')){ const st=k.startsWith('note:#')?{fill:k.slice(5),stroke:darken(k.slice(5))}:NOTE_KINDS[k.slice(5)]; shape({shape:'rect',x,y:y-8,w:26,h:16,sw:1.2,fill:st.fill,stroke:st.stroke}); }
     else if(k==='arrow'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2,stroke:col.tie});
                           line({x1:x+26,y1:y,x2:x+18,y2:y-5,sw:2,stroke:col.tie});
                           line({x1:x+26,y1:y,x2:x+18,y2:y+5,sw:2,stroke:col.tie}); }
@@ -2049,8 +2079,19 @@ function legend(w,top){
 }
 
 /* ===================== 文字備註繪製 ===================== */
-const NOTE_KINDS={obs:{label:'觀察',fill:'#FFF9E3',stroke:'#8f948f'},todo:{label:'待辦',fill:'#E7F1FA',stroke:'#4f7aa8'},risk:{label:'風險',fill:'#FBE8E5',stroke:'#c4523f'}};
-const noteStyle=n=>NOTE_KINDS[n.kind]||NOTE_KINDS.obs;
+/* 備註顏色：預設白色（最中性），其餘為建議用途，純屬本工具慣例，不是國際規範，可自由使用或自訂 */
+const NOTE_KINDS={
+  white:{label:'一般',fill:'#FFFFFF',stroke:'#7d857f'},
+  obs:  {label:'觀察',fill:'#FFF9E3',stroke:'#a0894a'},
+  res:  {label:'優勢／資源',fill:'#E6F4EA',stroke:'#4e8f5f'},
+  todo: {label:'待辦',fill:'#E7F1FA',stroke:'#4f7aa8'},
+  risk: {label:'風險',fill:'#FBE8E5',stroke:'#c4523f'},
+  grey: {label:'補充說明',fill:'#EEEEEA',stroke:'#7d857f'},
+  custom:{label:'備註',fill:'#FFFFFF',stroke:'#7d857f'}
+};
+const darken=(hex,f=0.45)=>{ const h=hex.replace('#',''); if(!/^[0-9a-fA-F]{6}$/.test(h)) return '#7d857f';
+  const c=[0,2,4].map(i=>Math.round(parseInt(h.slice(i,i+2),16)*(1-f))); return '#'+c.map(v=>v.toString(16).padStart(2,'0')).join(''); };
+const noteStyle=n=>{ if(n.kind==='custom'&&n.fill) return {label:'備註',fill:n.fill,stroke:darken(n.fill)}; return NOTE_KINDS[n.kind]||NOTE_KINDS.white; };
 const NOTE_STROKE='#8f948f';
 function noteBox(n){
   const fs=(n.fs||12)*FS(), lh=fs*1.5, pad=8*FS();
@@ -2789,7 +2830,11 @@ function loadTemplate(key,quiet){
   const U=(a,b,type,children=[])=>state.geno.unions.push({id:nid('u'),a,b,type,children});
   const T=(a,b,type)=>state.geno.ties.push({id:nid('t'),a,b,type});
   const names={demo:'示範案例',nuclear:'核心家庭',twogen:'兩代同堂',threegen:'三代同堂',
-    single:'單親家庭',remarry:'重組家庭',grand:'隔代教養',couple:'兩人家庭',rotate:'輪住照顧'};
+    single:'單親（離婚）',remarry:'重組家庭',grand:'隔代教養',couple:'兩人家庭',rotate:'輪住照顧',
+    widow:'單親（喪偶）',elderalone:'獨居長者',elderpair:'老老照顧',dualaging:'雙老家庭',caregiver:'主要照顧者',
+    cohabit:'同居家庭',newresident:'新住民家庭',separated:'分居家庭',adopt:'收養家庭',foster:'寄養／安置',
+    conflict:'高衝突家庭',samesex:'同性伴侶家庭',singleperson:'獨居單身',multi:'多段婚姻',twins:'多胞胎家庭'};
+  const SYS=list=>{ state.eco.systems=[]; list.forEach(([label,strength,stress,flow])=>addSystem({label,strength,stress,flow})); };
 
   if(key==='demo'){
     const gf=mk('祖父','male','82',{dead:true}), gm=mk('祖母','female','79',{ill:true});
@@ -2867,6 +2912,144 @@ function loadTemplate(key,quiet){
     const h=mk('案主','male','52',{index:true}), w=mk('案妻','female','50');
     U(h,w,'married',[]);
     T(h,w,'close');
+  }
+  else if(key==='widow'){
+    const h=mk('案夫','male','48',{dead:true}), w=mk('案主','female','45',{index:true});
+    const c1=mk('長女','female','17'), c2=mk('次子','male','13');
+    U(h,w,'married',[K(c1),K(c2)]);
+    T(w,c1,'close');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[w,c1,c2]}];
+    state.eco={center:'案主家庭',members:'案主、長女、次子',systems:[]};
+    SYS([['娘家','normal',false,'in'],['公司','normal',false,'both'],['學校','normal',false,'both'],['家庭經濟','weak',true,'none']]);
+  }
+  else if(key==='elderalone'){
+    const h=mk('案夫','male','84',{dead:true}), w=mk('案主','female','81',{index:true,ill:true});
+    const s1=mk('長子','male','56'), w1=mk('長媳','female','54'), d1=mk('長女','female','53');
+    U(h,w,'married',[K(s1),K(d1)]);
+    U(s1,w1,'married',[]);
+    T(w,d1,'close'); T(w,s1,'distant');
+    state.geno.circles=[{id:nid('c'),label:'獨居',members:[w]}];
+    state.eco={center:'案主（獨居）',members:'案主',systems:[]};
+    SYS([['長女（北部）','normal',false,'in'],['長子（外地）','weak',false,'none'],['居家服務員','strong',false,'in'],
+         ['鄰居／里長','normal',false,'in'],['社區關懷據點','normal',false,'both'],['診所／慢性病','normal',false,'in'],['宗教團體','weak',false,'both']]);
+  }
+  else if(key==='elderpair'){
+    const h=mk('案主','male','83',{index:true,ill:true}), w=mk('案妻','female','80',{ill:true});
+    const s1=mk('長子','male','55'), d1=mk('長女','female','52'), s2=mk('次子','male','50');
+    U(h,w,'married',[K(s1),K(d1),K(s2)]);
+    T(h,w,'close'); T(w,d1,'close');
+    state.geno.circles=[{id:nid('c'),label:'同住（相互照顧）',members:[h,w]}];
+    state.eco={center:'案主夫妻',members:'案主、案妻',systems:[]};
+    SYS([['長女（每週探視）','strong',false,'in'],['長子／次子（外地）','weak',false,'none'],['長照個管師','strong',false,'in'],
+         ['日照中心','normal',false,'both'],['醫院','normal',true,'in'],['鄰居','normal',false,'both']]);
+  }
+  else if(key==='dualaging'){
+    const fa=mk('案父','male','78',{ill:true}), mo=mk('案母','female','75');
+    const me=mk('案主','male','46',{index:true,ill:true,note:'中度智能障礙'}), si=mk('案姊','female','50');
+    U(fa,mo,'married',[K(si),K(me)]);
+    T(mo,me,'fused'); T(si,me,'distant');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[fa,mo,me]}];
+    state.eco={center:'案主家庭',members:'案父、案母、案主',systems:[]};
+    SYS([['社區日間作業設施','strong',false,'both'],['社會局身障科','normal',false,'in'],['案姊（外縣市）','weak',false,'none'],
+         ['醫院（案父洗腎）','normal',true,'in'],['家庭經濟','weak',true,'none'],['教會','normal',false,'both']]);
+  }
+  else if(key==='caregiver'){
+    const fa=mk('案父','male','82',{dead:true}), mo=mk('案母','female','79',{ill:true,note:'失智中度'});
+    const s1=mk('長子','male','54'), w1=mk('長媳','female','52'), d1=mk('案主','female','50',{index:true,note:'主要照顧者，未婚'}), s2=mk('次子','male','47');
+    U(fa,mo,'married',[K(s1),K(d1),K(s2)]);
+    U(s1,w1,'married',[]);
+    T(d1,mo,'fused'); T(d1,s1,'conflict'); T(d1,s2,'distant');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[mo,d1]}];
+    state.eco={center:'案主與案母',members:'案主、案母',systems:[]};
+    SYS([['長照 2.0 居服','strong',false,'in'],['失智共照中心','normal',false,'in'],['家庭照顧者支持據點','weak',false,'in'],
+         ['長子（不分擔照顧）','weak',true,'none'],['案主職場（請假中）','normal',true,'both'],['喘息服務','weak',false,'in']]);
+  }
+  else if(key==='cohabit'){
+    const h=mk('案主','male','30',{index:true}), w=mk('同居伴侶','female','28');
+    const c1=mk('長女','female','3');
+    U(h,w,'cohabit',[K(c1)]);
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[h,w,c1]}];
+  }
+  else if(key==='newresident'){
+    const gf=mk('案公','male','70'), gm=mk('案婆','female','67');
+    const h=mk('案夫','male','45'), w=mk('案主','female','36',{index:true,note:'越南籍，來台 8 年'});
+    const c1=mk('長子','male','7'), c2=mk('次女','female','4');
+    U(gf,gm,'married',[K(h)]);
+    U(h,w,'married',[K(c1),K(c2)]);
+    T(w,gm,'conflict'); T(w,c1,'close');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[gf,gm,h,w,c1,c2]}];
+    state.eco={center:'案主家庭',members:'案主、案夫、長子、次女',systems:[]};
+    SYS([['新住民家庭服務中心','strong',false,'in'],['娘家（越南）','normal',false,'both'],['同鄉姊妹','strong',false,'both'],
+         ['夫家親戚','weak',true,'none'],['子女學校','normal',false,'both'],['工作（工廠）','normal',false,'both']]);
+  }
+  else if(key==='separated'){
+    const h=mk('案父','male','41',{note:'週末子女到父家'}), w=mk('案主','female','39',{index:true});
+    const c1=mk('長子','male','12'), c2=mk('次女','female','9');
+    U(h,w,'separated',[K(c1),K(c2)]);
+    T(h,w,'conflict');
+    state.geno.circles=[{id:nid('c'),label:'平日同住',members:[w,c1,c2]}];
+  }
+  else if(key==='adopt'){
+    const h=mk('案父','male','44'), w=mk('案母','female','42');
+    const c1=mk('案主','female','8',{index:true,note:'3 歲時收養'});
+    U(h,w,'married',[K(c1,'adopted')]);
+    T(w,c1,'close');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[h,w,c1]}];
+  }
+  else if(key==='foster'){
+    const bf=mk('生父','male','35'), bm=mk('生母','female','31',{note:'物質濫用治療中'});
+    const me=mk('案主','male','6',{index:true});
+    const ff=mk('寄養父','male','52'), fm=mk('寄養母','female','50');
+    U(bf,bm,'separated',[K(me)]);
+    U(ff,fm,'married',[K(me,'foster')]);
+    T(me,fm,'close'); T(me,bm,'distant'); T(bf,bm,'conflict');
+    state.geno.circles=[{id:nid('c'),label:'寄養家庭（安置中）',members:[ff,fm,me]}];
+    state.eco={center:'案主（安置中）',members:'案主',systems:[]};
+    SYS([['兒保社工','strong',false,'in'],['寄養家庭','strong',false,'in'],['生母（監督會面）','weak',true,'none'],
+         ['幼兒園','normal',false,'both'],['早療中心','normal',false,'in'],['法院／家事調查','normal',true,'none']]);
+  }
+  else if(key==='conflict'){
+    const gf=mk('案祖父','male','75'), gm=mk('案祖母','female','72');
+    const fa=mk('案父','male','50',{note:'酒精問題'}), mo=mk('案母','female','47');
+    const me=mk('案主','female','17',{index:true}), br=mk('案弟','male','14');
+    U(gf,gm,'married',[K(fa)]);
+    U(fa,mo,'married',[K(me),K(br)]);
+    T(fa,mo,'conflict'); T(fa,me,'cutoff'); T(me,mo,'closeconflict'); T(me,br,'close'); T(fa,gf,'worsening'); T(me,gm,'positive');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[fa,mo,me,br]}];
+  }
+  else if(key==='samesex'){
+    const a=mk('案主','female','38',{index:true}), b=mk('配偶','female','36');
+    const c1=mk('長子','male','5');
+    U(a,b,'married',[K(c1)]);
+    T(a,b,'close');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[a,b,c1]}];
+  }
+  else if(key==='singleperson'){
+    const fa=mk('案父','male','72'), mo=mk('案母','female','70');
+    const me=mk('案主','male','45',{index:true,note:'未婚獨居'}), si=mk('案妹','female','42');
+    U(fa,mo,'married',[K(me),K(si)]);
+    T(me,mo,'positive'); T(me,fa,'distant');
+    state.geno.circles=[{id:nid('c'),label:'獨居',members:[me]},{id:nid('c'),label:'原生家庭',members:[fa,mo],dashed:true}];
+    state.eco={center:'案主',members:'案主',systems:[]};
+    SYS([['工作','strong',true,'both'],['朋友','normal',false,'both'],['原生家庭','normal',false,'both'],['醫療（身心科）','normal',false,'in'],['運動社團','weak',false,'both']]);
+  }
+  else if(key==='multi'){
+    const ex1=mk('第一任丈夫','male','58'), ex2=mk('第二任丈夫','male','52',{dead:true}), w=mk('案主','female','50',{index:true}), h=mk('現任伴侶','male','49');
+    const c1=mk('長女','female','28'), c2=mk('次子','male','18'), c3=mk('么女','female','6');
+    U(ex1,w,'divorced',[K(c1)]);
+    U(ex2,w,'married',[K(c2)]);
+    U(w,h,'cohabit',[K(c3)]);
+    T(w,c1,'distant');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[w,h,c2,c3]}];
+  }
+  else if(key==='twins'){
+    const h=mk('案父','male','36'), w=mk('案母','female','34');
+    const t1=mk('案主','male','5',{index:true,ill:true,note:'發展遲緩'}), t2=mk('雙胞胎弟','male','5');
+    U(h,w,'married',[K(t1),K(t2,'birth',true)]);
+    T(w,t1,'close');
+    state.geno.circles=[{id:nid('c'),label:'同住',members:[h,w,t1,t2]}];
+    state.eco={center:'案主家庭',members:'案父、案母、案主、弟',systems:[]};
+    SYS([['早療中心','strong',false,'in'],['幼兒園','normal',false,'both'],['娘家（協助托育）','strong',false,'in'],['案父工作（輪班）','normal',true,'both']]);
   }
   setMode('genogram'); setEditMode('form'); autoLayout(); syncUI();
   quiet ? toast('已載入示範案例') : offerUndo(`已載入「${names[key]||''}」範本`);
