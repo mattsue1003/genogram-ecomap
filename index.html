@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -531,7 +530,7 @@ details.help .body b{color:var(--ink)}
       <summary>符號對照（依台灣社工慣例）</summary>
       <div class="body">
         <b>人物</b>：男□／女○／不確定對象或懷孕不知性別△／伴侶動物◇（國際慣例）；案主灰底填滿；已故在符號內打叉；身障或慢性病在符號內右下角塗黑一小塊（台灣符號表畫法；國際 McGoldrick 慣例則是塗左半邊），病名用註記寫在名字下方——家系圖沒有特定疾病的專屬符號。<br>
-        <b>婚姻</b>：結婚實線／同居虛線／離婚線上打✕／分居單斜線；多段婚姻標序號。<br>
+        <b>婚姻／伴侶</b>：結婚實線／同居虛線／交往、未婚生子點線／離婚線上打✕／分居、分手單斜線；多段婚姻標序號。生父不詳時，對方用「不確定對象」△ 加點線。<br>
         <b>子女</b>：親生實線／收養、寄養虛線（實線代表現況法律關係）；多胞胎共用同一頂點。<br>
         <b>情感</b>：正向關係細實線／正向親密粗線／過度親密更粗／衝突鋸齒／衝突又親密粗線加鋸齒／關係惡化斜線／溝通中斷⊣⊢／疏遠點線。<br>
         <b>生活圈</b>：不規則圈，圈內為關係密切者。
@@ -743,6 +742,8 @@ function syncUI(){
           <option value="divorced" ${u.type==='divorced'?'selected':''}>離婚</option>
           <option value="separated" ${u.type==='separated'?'selected':''}>分居</option>
           <option value="cohabit" ${u.type==='cohabit'?'selected':''}>同居</option>
+          <option value="dating" ${u.type==='dating'?'selected':''}>交往／未婚生子（未同居）</option>
+          <option value="breakup" ${u.type==='breakup'?'selected':''}>分手（曾交往）</option>
         </select>
         <select style="flex:1" onchange="setU('${u.id}','b',this.value)">${opts(u.b)}</select>
         <button class="del" onclick="del(state.geno.unions,'${u.id}')">✕</button>
@@ -937,7 +938,8 @@ const ROLE_DICT=[
 ];
 const UNI_KW=[
   {re:/離婚/,type:'divorced'},{re:/分居/,type:'separated'},
-  {re:/同居|交往/,type:'cohabit'},{re:/結婚|已婚|夫妻|成婚|婚配/,type:'married'},
+  {re:/分手/,type:'breakup'},{re:/未婚生子|未婚生|交往|未婚/,type:'dating'},
+  {re:/同居/,type:'cohabit'},{re:/結婚|已婚|夫妻|成婚|婚配/,type:'married'},
 ];
 const TIE_KW=[
   {re:/衝突|吵架|不合|對立|爭執|緊張|關係不好|關係差|處不來|關係惡劣/,type:'conflict'},
@@ -1024,7 +1026,7 @@ function parseTranscript(raw){
   const idxName=[...found.values()].find(m=>m.index)?.name;
   lines.forEach(line=>{
     const subs=line.split(/[，,、]/);
-    let recent=[];   // 本行最近出現的角色（依序）
+    let recent=[], lastPair=null;   // 本行最近出現的角色；本行最後一段關係的那一對
     subs.forEach(seg=>{
       const clean=seg.replace(/（[^）]*）|\([^)]*\)/g,'').replace(/\d{1,3}\s*歲/g,'');
       let hits=rolesIn(clean).filter(h=>found.has(h.k));
@@ -1040,6 +1042,10 @@ function parseTranscript(raw){
       if(hits.length===1 && hasVerb && idxName && hits[0].k!==idxName){
         hits=[{pos:-1,k:idxName},hits[0]];
       }
+      // 完全沒角色但有動詞（「後來分手」）→ 沿用本行最近的兩個角色
+      if(hits.length===0 && hasVerb && (lastPair||recent.length>=2)){
+        const pr=lastPair||recent.slice(-2); hits=[{pos:0,k:pr[0]},{pos:1,k:pr[1]}];
+      }
       if(hits.length<2) return;
       const attach=(re,type,kind)=>{
         let m; const rx=new RegExp(re,'g');
@@ -1052,7 +1058,7 @@ function parseTranscript(raw){
           else if(left.length===1 && right.length>=1){ a=left[0].k; b=right[0].k; }
           else if(right.length>=2){ a=right[0].k; b=right[1].k; }
           else continue;
-          if(a!==b) rels.push({a,b,type,kind});
+          if(a!==b){ rels.push({a,b,type,kind}); lastPair=[a,b]; }
         }
       };
       UNI_KW.forEach(u=>attach(u.re.source,u.type,'uni'));
@@ -1073,7 +1079,7 @@ function parseTranscript(raw){
     members.push({name:k.name+'（次）',g:k.g,gen:3,index:false,age:k.age});
     members[members.indexOf(k)]={...k,name:k.name+'（長）'};
   }
-  return {members, rels:finalRels};
+  return {members, rels:finalRels, raw:text};
 }
 function renderParseResult(res){
   const box=document.getElementById('impResult');
@@ -1133,6 +1139,16 @@ function applyParse(fresh=true){
   if(idxP){
     const sp=state.geno.persons.find(p=>['案妻','案夫','配偶'].includes(p.name));
     if(sp && !findUnion(idxP.id,sp.id)) addUnion({a:idxP.id,b:sp.id,type:'married'});
+  }
+  // 未婚生子／生父不詳：案主沒有伴侶時，自動補一位「生父（不詳）」△ 並以點線相連，子女掛這段關係
+  if(idxP && /未婚生子|未婚媽媽|生父不詳|未婚生/.test(parseResult.raw||'') &&
+     !state.geno.unions.some(u=>u.a===idxP.id||u.b===idxP.id)){
+    const stated=parseResult.members.find(m=>m.index)?.g;               // 文中有無指明案主性別
+    if(!stated && /生父不詳|未婚媽媽/.test(parseResult.raw||'')) idxP.gender='female';
+    const g=idxP.gender==='male'?'female':'unknown';
+    addPerson({name:g==='unknown'?'生父（不詳）':'生母',gender:g,age:''});
+    const other=state.geno.persons.at(-1);
+    addUnion({a:idxP.id,b:other.id,type:'dating'});
   }
   // 親子：子女優先掛到「含案主的婚姻」，其次父母代婚姻
   const kids=parseResult.members.filter(m=>m.gen===3);
@@ -1224,7 +1240,7 @@ ${raw}`;
 function guessGen(name){
   const r=matchRole(name); return r?r.gen:2;
 }
-const UNI_LABEL={married:'結婚',divorced:'離婚',separated:'分居',cohabit:'同居'};
+const UNI_LABEL={married:'結婚',divorced:'離婚',separated:'分居',cohabit:'同居',dating:'交往／未婚生子',breakup:'分手'};
 /* 情感關係的唯一名稱表：下拉、矩陣、圖例、貼稿結果一律用這裡 */
 const TIE_LABEL={positive:'正向關係',close:'正向親密',fused:'過度親密',conflict:'衝突',
   closeconflict:'衝突又親密',worsening:'關係惡化',cutoff:'溝通中斷',distant:'疏遠'};
@@ -1705,7 +1721,7 @@ function buildGenogram(){
   us.forEach(u=>{
     const a=P(u.a),b=P(u.b); if(!a||!b||a===b) return;
     const L=a.x<=b.x?a:b, R=a.x<=b.x?b:a, y=(a.y+b.y)/2;
-    const dash=u.type==='cohabit'?'6 4':null;
+    const dash=u.type==='cohabit'?'6 4':(u.type==='dating'||u.type==='breakup')?'2 4':null;
     const kids=sortedKids(u).map(c=>({...c,p:P(c.id)})).filter(c=>c.p);
     const busY=kids.length?Math.min(...kids.map(c=>c.p.y))-HH-34:null;
 
@@ -1747,7 +1763,7 @@ function buildGenogram(){
       line({x1:mx-8,y1:markY-10,x2:mx+8,y2:markY+10,sw:2});
       line({x1:mx+8,y1:markY-10,x2:mx-8,y2:markY+10,sw:2});
     }
-    if(u.type==='separated') line({x1:mx-7,y1:markY+10,x2:mx+7,y2:markY-10,sw:2});
+    if(u.type==='separated'||u.type==='breakup') line({x1:mx-7,y1:markY+10,x2:mx+7,y2:markY-10,sw:2});
     [[u.a,a],[u.b,b]].forEach(([pid,per])=>{
       const n=seq[u.id+':'+pid]; if(!n) return;
       text({cx:per.x+(mx-per.x)*0.55,cy:markY-13,w:24,h:14,t:String(n),size:11,color:GREY});
@@ -2155,7 +2171,7 @@ const LGw=()=>Math.round(142*FS()), LRh=()=>Math.round(30*FS());
 const NET_LEGEND=[['dbl','強連結'],['solid','一般'],['dash','薄弱'],['zig','壓力／衝突'],['dashdot','正式程序／法定'],['arrow','資源流向']];
 const legendItems=()=>(state.mode==='ecomap'&&ecoMode==='network') ? NET_LEGEND : state.mode==='genogram'
   ? [['rect','男'],['ellipse','女'],['tri','不確定／懷孕'],['pet','伴侶動物'],['shade','案主'],['dead','已故'],['ill','身障慢病'],
-     ['solid','結婚'],['dash','同居'],['x','離婚'],['slash','分居'],['adopt','收養'],['twin','多胞胎'],
+     ['solid','結婚'],['dash','同居'],['dotu','交往／未婚生子'],['x','離婚'],['slash','分居'],['adopt','收養'],['twin','多胞胎'],
      ['thin',TIE_LABEL.positive],['thick',TIE_LABEL.close],['fused',TIE_LABEL.fused],
      ['zig',TIE_LABEL.conflict],['closezig',TIE_LABEL.closeconflict],['hatch',TIE_LABEL.worsening],
      ['cut',TIE_LABEL.cutoff],['dot',TIE_LABEL.distant],['ring','生活圈']]
@@ -2193,6 +2209,7 @@ function legend(w,top){
                       line({x1:x+8,y1:y-7,x2:x+18,y2:y+7,sw:2}); line({x1:x+18,y1:y-7,x2:x+8,y2:y+7,sw:2}); }
     else if(k==='slash'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2}); line({x1:x+9,y1:y+7,x2:x+17,y2:y-7,sw:2}); }
     else if(k==='adopt') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'6 4'});
+    else if(k==='dotu') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'2 4'});
     else if(k==='twin'){ line({x1:x+13,y1:y-8,x2:x+3,y2:y+8,sw:1.8}); line({x1:x+13,y1:y-8,x2:x+23,y2:y+8,sw:1.8}); }
     else if(k==='zig') zig(x,y,x+26,y,{amp:5,stroke:col.stress});
     else if(k==='dashdot') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'8 3 2 3',stroke:INK});
