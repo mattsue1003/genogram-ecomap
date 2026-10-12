@@ -268,6 +268,15 @@ details.help .body b{color:var(--ink)}
 .help-fig svg{display:block;width:100%;height:auto}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
 #toast.on{pointer-events:auto}
+.errdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#E8552D;margin-left:6px;vertical-align:2px}
+.rpt-bg{position:fixed;inset:0;background:rgba(18,52,59,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.rpt{background:#fff;border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px 20px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.rpt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.rpt-head h3{margin:0;font-size:17px;color:var(--ink)}
+.rpt-row select{width:100%;margin-bottom:8px}
+#rptText{width:100%;min-height:110px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--font);font-size:14px;line-height:1.6;resize:vertical}
+#rptPreview{background:#f7f5f1;border:1px solid #eee8df;border-radius:8px;padding:10px;font-size:11.5px;line-height:1.55;color:#4a5a58;white-space:pre-wrap;max-height:160px;overflow:auto;margin:8px 0 0}
+.rpt-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .undo-btn{margin-left:10px;border:1px solid var(--amber);background:transparent;color:var(--amber);border-radius:5px;padding:3px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
 .undo-btn:hover{background:var(--amber);color:var(--ink)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -386,6 +395,7 @@ details.help .body b{color:var(--ink)}
   <button class="btn ghost" onclick="exportPNG();hdrActions.classList.remove('on')">下載 PNG</button>
   <button class="btn ghost" onclick="exportDOCX();hdrActions.classList.remove('on')">下載 Word</button>
   <button class="btn primary" onclick="exportPPTX();hdrActions.classList.remove('on')">下載 PPTX（可編輯）</button>
+  <button class="btn ghost" id="reportBtn" onclick="openReport();hdrActions.classList.remove('on')">回報問題<span id="errDot" class="errdot" style="display:none"></span></button>
   </div>
 </header>
 <div id="resumeBar">
@@ -531,7 +541,7 @@ details.help .body b{color:var(--ink)}
       <div class="body">
         <b>人物</b>：男□／女○／未出生或懷孕中△（畫在孕婦的下一代）／伴侶動物◇；身分不詳（如生父不詳）仍依性別畫□○，外框改虛線；案主灰底填滿；已故在符號內打叉；身障或慢性病在符號內右下角塗黑一小塊（台灣符號表畫法；國際 McGoldrick 慣例則是塗左半邊），病名用註記寫在名字下方——家系圖沒有特定疾病的專屬符號。<br>
         <b>婚姻／伴侶</b>：結婚實線／同居虛線／交往、未婚生子點線／離婚線上打✕／分居、分手單斜線；多段婚姻標序號。生父不詳時，對方用「不確定對象」△ 加點線。<br>
-        <b>子女</b>：親生實線／收養、寄養虛線（實線代表現況法律關係）；多胞胎共用同一頂點。<br>
+        <b>子女</b>：親生實線／收養虛線／寄養點線；多胞胎共用同一頂點。<br>
         <b>情感</b>：正向關係細實線／正向親密粗線／過度親密更粗／衝突鋸齒／衝突又親密粗線加鋸齒／關係惡化斜線／溝通中斷⊣⊢／疏遠點線。<br>
         <b>生活圈</b>：不規則圈，圈內為關係密切者。
         <p class="hint">符號依據：家系圖一般符號代表涵義表、家系圖進階表示法（周瑞德）。</p>
@@ -578,6 +588,27 @@ details.help .body b{color:var(--ink)}
   <button id="mobEdit" class="on" onclick="mobPane('edit')">✎ 編輯資料</button>
   <button id="mobView" onclick="mobPane('view')">◫ 看圖</button>
 </nav>
+<div id="reportModal" class="rpt-bg" style="display:none" onclick="if(event.target===this)closeReport()">
+  <div class="rpt">
+    <div class="rpt-head"><h3>回報問題給開發者</h3><button class="del" onclick="closeReport()">✕</button></div>
+    <p class="hint" style="margin:0 0 10px">寫下發生了什麼事，越具體越好（例如：在哪個分頁、做了什麼動作、看到什麼結果）。<b>不會自動傳送任何資料</b>，下面的內容你都看得到。</p>
+    <div class="rpt-row">
+      <select id="rptType">
+        <option>畫出來的圖不對</option><option>按鈕沒反應／當掉</option><option>匯出的檔案有問題</option>
+        <option>符號或畫法不符合實務</option><option>功能建議</option><option>其他</option>
+      </select>
+    </div>
+    <textarea id="rptText" placeholder="例如：在生態圖的自由網絡圖，拖曳單位後連線沒有跟著移動。"></textarea>
+    <label class="chk" style="margin-top:8px"><input type="checkbox" id="rptTech" checked onchange="refreshReportPreview()"> 附上技術資訊（不含任何姓名、年齡或個案內容）</label>
+    <pre id="rptPreview"></pre>
+    <div class="rpt-act">
+      <button class="btn primary" id="rptMailBtn" onclick="sendReportMail()">用 Email 寄出</button>
+      <button class="btn" id="rptFormBtn" onclick="sendReportForm()" style="display:none">用線上表單回報</button>
+      <button class="btn" onclick="copyReport()">複製內容</button>
+    </div>
+    <p class="hint" id="rptNoMail" style="display:none">尚未設定收件信箱，請先按「複製內容」，再貼到 LINE 或訊息傳給開發者。</p>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -595,6 +626,20 @@ const IS = () => 1;               // 圖內文字倍率（固定）
 const nodeScale = () => 1;        // 圖形倍率（固定）
 function applyScales(){}           // 保留呼叫點，不做任何事
 const INK='#12343B', GREY='#6b7772', SHADE='#D9D9D9';
+/* ===== 回報問題設定：填入收件信箱或 Google 表單網址即可啟用 ===== */
+const TOOL_VERSION='2026-10-12';
+const REPORT_EMAIL='a0986391797@gmail.com';
+const REPORT_FORM_URL='';     // 例：'https://forms.gle/xxxx'（Google 表單可設定每筆回覆寄信通知）
+/* 只在本機記錄最近的錯誤訊息，不會自動傳送 */
+const ERR_LOG=[]; let errNotified=false;
+function logErr(msg,src){
+  ERR_LOG.push(`[${new Date().toLocaleTimeString('zh-TW',{hour12:false})}] ${String(msg).slice(0,180)}${src?' @'+src:''}`);
+  if(ERR_LOG.length>8) ERR_LOG.shift();
+  const d=document.getElementById('errDot'); if(d) d.style.display='inline-block';
+  if(!errNotified){ errNotified=true; setTimeout(()=>{ try{ toast('剛剛發生了一個錯誤，可以按右上「回報問題」告訴開發者'); }catch(e){} },300); }
+}
+window.addEventListener('error',e=>logErr(e.message, e.filename?String(e.filename).split('/').pop()+':'+e.lineno:''));
+window.addEventListener('unhandledrejection',e=>logErr('Promise: '+(e.reason&&e.reason.message||e.reason)));
 /* 匯出字型：跟著使用者的作業系統走，讓 Word／PPT 開起來跟預覽一樣 */
 const IS_MAC=/Mac|iPhone|iPad/.test(navigator.platform||'')||/Macintosh/.test(navigator.userAgent||'');
 const EXPORT_FONT = IS_MAC ? 'PingFang TC' : 'Microsoft JhengHei';
@@ -1074,7 +1119,17 @@ function parseTranscript(raw){
 
   // 多胞胎／多子：「兩子」「雙胞胎」「各N歲」— 若只抓到一個子女但文中提到複數，複製一份
   const members=[...found.values()];
-  const multiKid=/兩|二|雙胞胎|龍鳳胎|三胞胎|2名|兩名|兩個/.test(text);
+  // 沒抓到任何子女稱謂時，解析「兩子」「一女」「三個兒子」這類數量說法
+  {
+    const N={'一':1,'二':2,'兩':2,'三':3,'1':1,'2':2,'3':3}, ord=['長','次','三'];
+    const hasSon=members.some(m=>m.gen===3&&m.g==='male'), hasDau=members.some(m=>m.gen===3&&m.g==='female');
+    const sons=text.match(/([一二兩三123])(?:個|名|位)?(?:兒子|男孩|子)(?!女)/), daus=text.match(/([一二兩三123])(?:個|名|位)?(?:女兒|女孩|女)/);
+    if(sons && !hasSon && !/未婚生子|生子/.test(sons[0]+text.slice(text.indexOf(sons[0])-2,text.indexOf(sons[0])))) for(let i=0;i<(N[sons[1]]||0);i++)
+      members.push({name:(N[sons[1]]>1?ord[i]:'長')+'子',g:'male',gen:3,index:false,age:''});
+    if(daus && !hasDau) for(let i=0;i<(N[daus[1]]||0);i++)
+      members.push({name:(N[daus[1]]>1?ord[i]:'長')+'女',g:'female',gen:3,index:false,age:''});
+  }
+  const multiKid=/(兩|二|2)(個|名|位)?(子女|孩子|小孩|兒子|女兒|子|女)|雙胞胎|龍鳳胎|三胞胎/.test(text);
   const kids=members.filter(m=>m.gen===3);
   if(multiKid && kids.length===1){
     const k=kids[0];
@@ -1152,6 +1207,11 @@ function applyParse(fresh=true){
     const other=state.geno.persons.at(-1);
     addUnion({a:idxP.id,b:other.id,type:'dating'});
   }
+  // 同性伴侶：案主與伴侶設為同性別（未指明時預設女性；可在表格修改）
+  if(idxP && /同性|同婚/.test(parseResult.raw||'')){
+    if(!parseResult.members.find(m=>m.index)?.g) idxP.gender = /男同志|兩位男|兩個男/.test(parseResult.raw)?'male':'female';
+    state.geno.unions.filter(u=>u.a===idxP.id||u.b===idxP.id).forEach(u=>{ const o=P(u.a===idxP.id?u.b:u.a); if(o) o.gender=idxP.gender; });
+  }
   // 親子：子女優先掛到「含案主的婚姻」，其次父母代婚姻
   const kids=parseResult.members.filter(m=>m.gen===3);
   const idxUnion=state.geno.unions.find(u=>{ const A=P(u.a),B=P(u.b);
@@ -1162,7 +1222,7 @@ function applyParse(fresh=true){
   if(anchor){
     kids.forEach(k=>{ const kid=byName(k.name);
       if(kid && kid.id!==anchor.a && kid.id!==anchor.b && !anchor.children.some(c=>c.id===kid.id))
-        anchor.children.push({id:kid.id,link:'birth',twin:false});
+        anchor.children.push({id:kid.id,link:/領養|收養/.test(parseResult.raw||'')?'adopted':/寄養|安置/.test(parseResult.raw||'')?'foster':'birth',twin:false});
     });
   }
   autoLayout(); syncUI(); render();
@@ -1780,7 +1840,7 @@ function buildGenogram(){
     line({x1:Math.min(...anchors,mx),y1:busY,x2:Math.max(...anchors,mx),y2:busY,sw:2});
     groups.forEach((g,i)=>{
       g.forEach(c=>line({x1:anchors[i],y1:busY,x2:c.p.x,y2:c.p.y-HH,sw:2,
-                         dash:c.link==='birth'?null:'6 4'}));
+                         dash:c.link==='birth'?null:c.link==='foster'?'2 4':'6 4'}));
     });
   });
 
@@ -2173,7 +2233,7 @@ const LGw=()=>Math.round(142*FS()), LRh=()=>Math.round(30*FS());
 const NET_LEGEND=[['dbl','強連結'],['solid','一般'],['dash','薄弱'],['zig','壓力／衝突'],['dashdot','正式程序／法定'],['arrow','資源流向']];
 const legendItems=()=>(state.mode==='ecomap'&&ecoMode==='network') ? NET_LEGEND : state.mode==='genogram'
   ? [['rect','男'],['ellipse','女'],['tri','未出生／懷孕中'],['dashbox','身分不詳'],['pet','伴侶動物'],['shade','案主'],['dead','已故'],['ill','身障慢病'],
-     ['solid','結婚'],['dash','同居'],['dotu','交往／未婚生子'],['x','離婚'],['slash','分居'],['adopt','收養'],['twin','多胞胎'],
+     ['solid','結婚'],['dash','同居'],['dotu','交往／未婚生子'],['x','離婚'],['slash','分居'],['adopt','收養'],['fosterl','寄養'],['twin','多胞胎'],
      ['thin',TIE_LABEL.positive],['thick',TIE_LABEL.close],['fused',TIE_LABEL.fused],
      ['zig',TIE_LABEL.conflict],['closezig',TIE_LABEL.closeconflict],['hatch',TIE_LABEL.worsening],
      ['cut',TIE_LABEL.cutoff],['dot',TIE_LABEL.distant],['ring','生活圈']]
@@ -2211,8 +2271,9 @@ function legend(w,top){
     else if(k==='x'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2});
                       line({x1:x+8,y1:y-7,x2:x+18,y2:y+7,sw:2}); line({x1:x+18,y1:y-7,x2:x+8,y2:y+7,sw:2}); }
     else if(k==='slash'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2}); line({x1:x+9,y1:y+7,x2:x+17,y2:y-7,sw:2}); }
-    else if(k==='adopt') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'6 4'});
+    else if(k==='adopt') line({x1:x+13,y1:y-9,x2:x+13,y2:y+9,sw:2,dash:'6 4'});
     else if(k==='dotu') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'2 4'});
+    else if(k==='fosterl') line({x1:x+13,y1:y-9,x2:x+13,y2:y+9,sw:2,dash:'2 4'});
     else if(k==='twin'){ line({x1:x+13,y1:y-8,x2:x+3,y2:y+8,sw:1.8}); line({x1:x+13,y1:y-8,x2:x+23,y2:y+8,sw:1.8}); }
     else if(k==='zig') zig(x,y,x+26,y,{amp:5,stroke:col.stress});
     else if(k==='dashdot') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'8 3 2 3',stroke:INK});
@@ -2501,6 +2562,59 @@ function loadJSON(inp){
 }
 
 /* ===================== 範例 ===================== */
+
+/* ===================== 回報問題 ===================== */
+function techInfo(){
+  const g=state.geno, e=state.eco, ua=navigator.userAgent;
+  const os=/iPhone|iPad/.test(ua)?'iOS':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':/Linux/.test(ua)?'Linux':'其他';
+  const br=/Edg\//.test(ua)?'Edge':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)?'Safari':/Firefox\//.test(ua)?'Firefox':'其他';
+  return [
+    `工具版本：${TOOL_VERSION}`,
+    `系統／瀏覽器：${os}／${br}　畫面：${innerWidth}×${innerHeight}`,
+    `目前分頁：${state.mode==='genogram'?'家系圖':'生態圖（'+({simple:'簡化',full:'完整家系生態',network:'自由網絡'}[ecoMode]||ecoMode)+'）'}　輸入方式：${({form:'表格',matrix:'關係矩陣',import:'貼逐字稿'})[editMode]||editMode}`,
+    `數量：成員 ${g.persons.length}、婚姻 ${g.unions.length}、情感 ${g.ties.length}、生活圈 ${g.circles.length}、外部系統 ${e.systems.length}、連線 ${(e.links||[]).length}`,
+    `設定：年齡欄 ${({age:'歲數',birth:'出生年',birthAge:'出生年顯示歲數'})[optAge.value]||optAge.value}、案主標示 ${({shade:'灰底',double:'雙框',red:'紅框'})[optIndex.value]||optIndex.value}、長幼排序 ${optSort.checked?'開':'關'}`,
+    `最近錯誤：${ERR_LOG.length?'\n  '+ERR_LOG.join('\n  '):'無'}`
+  ].join('\n');
+}
+function reportBody(){
+  const t=document.getElementById('rptType').value, d=document.getElementById('rptText').value.trim();
+  return `【問題類型】${t}\n【描述】\n${d||'（未填寫）'}`+(document.getElementById('rptTech').checked?`\n\n【技術資訊】\n${techInfo()}`:'');
+}
+function refreshReportPreview(){
+  document.getElementById('rptPreview').textContent = document.getElementById('rptTech').checked ? techInfo() : '（不附技術資訊）';
+}
+function openReport(){
+  document.getElementById('reportModal').style.display='flex';
+  document.getElementById('rptMailBtn').style.display = REPORT_EMAIL ? '' : 'none';
+  document.getElementById('rptFormBtn').style.display = REPORT_FORM_URL ? '' : 'none';
+  document.getElementById('rptNoMail').style.display = (REPORT_EMAIL||REPORT_FORM_URL) ? 'none' : '';
+  if(ERR_LOG.length) document.getElementById('rptType').value='按鈕沒反應／當掉';
+  refreshReportPreview();
+  setTimeout(()=>document.getElementById('rptText').focus(),50);
+}
+function closeReport(){ document.getElementById('reportModal').style.display='none'; }
+function buildMailto(){
+  const subj=`[家系圖工具回報] ${document.getElementById('rptType').value}`;
+  return `mailto:${REPORT_EMAIL}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(reportBody().slice(0,1800))}`;
+}
+function sendReportMail(){
+  if(!REPORT_EMAIL) return;
+  location.href=buildMailto();
+  toast('已開啟郵件程式，確認內容後按寄出即可；沒跳出來的話請改按「複製內容」');
+}
+function sendReportForm(){
+  if(!REPORT_FORM_URL) return;
+  copyReport(true);
+  window.open(REPORT_FORM_URL,'_blank');
+}
+async function copyReport(quiet){
+  const txt=reportBody();
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(_){} ta.remove(); }
+  toast(quiet?'內容已複製，請貼到表單裡送出':'已複製，可以貼到 Email、LINE 或訊息傳給開發者');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeReport(); });
 
 /* ===================== 本機暫存（localStorage） ===================== */
 const LS_AUTO='genoTool.autosave', LS_SLOTS='genoTool.slots', LS_DISMISS='genoTool.dismissAt';
