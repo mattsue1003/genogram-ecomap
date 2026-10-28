@@ -4219,7 +4219,12 @@ function init(){
     document.body.appendChild(f);
   }
   /* 網址 #tutorial 或 #tutorial-3 直接開啟（方便分享、放在簡報連結） */
-  const m=location.hash.match(/^#tutorial(?:-(\d))?$/); if(m) openTut(m[1]?clamp(+m[1]-1,0,CH.length-1):0);
+  openFromHash();
+  /* 在已開啟的網頁上改網址的 # 不會重新載入，所以也要監聽 hashchange */
+  addEventListener('hashchange',openFromHash);
+}
+function openFromHash(){
+  const m=location.hash.match(/^#tutorial(?:-(\d))?$/i); if(m) openTut(m[1]?clamp(+m[1]-1,0,CH.length-1):0);
 }
 window.openTutorial=openTut;
 window.tutorialControl={seek:t=>{seek(t);},pause:()=>pause(),play:()=>play(),get time(){return T;},get total(){return TOTAL;}};
