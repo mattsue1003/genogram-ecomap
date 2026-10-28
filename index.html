@@ -150,6 +150,9 @@ main{flex:1;display:flex;min-height:0}
 .tpl-menu button:hover{background:var(--teal-soft);color:var(--ink)}
 .tpl-menu .tpl-note{font-size:10.5px;color:var(--muted);padding:6px 8px 2px;border-top:1px solid #eee8df;margin-top:4px}
 .draft-menu{width:320px}
+.dl-menu{left:auto;right:0;width:280px}
+.dl-menu button b{display:block;font-size:13px;color:var(--ink)}
+.dl-menu button span{display:block;font-size:11px;color:var(--muted);margin-top:1px}
 .draft-menu .auto{font-size:11.5px;color:var(--teal);padding:6px 8px;display:flex;align-items:center;gap:6px}
 .draft-menu .auto::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--teal)}
 .draft-menu .slot{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px}
@@ -268,15 +271,6 @@ details.help .body b{color:var(--ink)}
 .help-fig svg{display:block;width:100%;height:auto}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
 #toast.on{pointer-events:auto}
-.errdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#E8552D;margin-left:6px;vertical-align:2px}
-.rpt-bg{position:fixed;inset:0;background:rgba(18,52,59,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
-.rpt{background:#fff;border-radius:14px;width:min(560px,100%);max-height:92vh;overflow:auto;padding:18px 20px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
-.rpt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-.rpt-head h3{margin:0;font-size:17px;color:var(--ink)}
-.rpt-row select{width:100%;margin-bottom:8px}
-#rptText{width:100%;min-height:110px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--font);font-size:14px;line-height:1.6;resize:vertical}
-#rptPreview{background:#f7f5f1;border:1px solid #eee8df;border-radius:8px;padding:10px;font-size:11.5px;line-height:1.55;color:#4a5a58;white-space:pre-wrap;max-height:160px;overflow:auto;margin:8px 0 0}
-.rpt-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .undo-btn{margin-left:10px;border:1px solid var(--amber);background:transparent;color:var(--amber);border-radius:5px;padding:3px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
 .undo-btn:hover{background:var(--amber);color:var(--ink)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -391,10 +385,16 @@ details.help .body b{color:var(--ink)}
   <button class="btn ghost" onclick="saveJSON();hdrActions.classList.remove('on')">存檔 JSON</button>
   <button class="btn ghost" onclick="document.getElementById('loadFile').click()">開啟 JSON</button>
   <input type="file" id="loadFile" accept=".json" style="display:none" onchange="loadJSON(this)">
-  <button class="btn ghost" onclick="exportSVG();hdrActions.classList.remove('on')">下載 SVG</button>
-  <button class="btn ghost" onclick="exportPNG();hdrActions.classList.remove('on')">下載 PNG</button>
-  <button class="btn ghost" onclick="exportDOCX();hdrActions.classList.remove('on')">下載 Word</button>
-  <button class="btn primary" onclick="exportPPTX();hdrActions.classList.remove('on')">下載 PPTX（可編輯）</button>
+  <span class="tpl-wrap">
+    <button class="btn primary" id="dlBtn" onclick="toggleDlMenu(event)">下載 ▾</button>
+    <div id="dlMenu" class="tpl-menu dl-menu">
+      <div class="tpl-head">選擇檔案格式</div>
+      <button onclick="dlPick(exportPPTX)"><b>PPTX（可編輯）</b><span>每個人物、線條都是原生圖形，最推薦</span></button>
+      <button onclick="dlPick(exportDOCX)"><b>Word</b><span>直接放進個案紀錄</span></button>
+      <button onclick="dlPick(exportPNG)"><b>PNG 圖片</b><span>勾「透明背景」可疊在文字上</span></button>
+      <button onclick="dlPick(exportSVG)"><b>SVG 向量圖</b><span>Word「轉換成圖形」後可逐一編修</span></button>
+    </div>
+  </span>
   </div>
 </header>
 <div id="resumeBar">
@@ -415,7 +415,7 @@ details.help .body b{color:var(--ink)}
       <div class="body">
         <b>方法一：SVG → 在 Word 拆成可編輯圖形（最推薦）</b>
         <ol>
-          <li>按上方「<b>下載 SVG</b>」。</li>
+          <li>按上方「<b>下載 ▾</b>」→「<b>SVG 向量圖</b>」。</li>
           <li>Word 中「插入 → 圖片 → 此裝置」，選剛下載的 .svg。</li>
           <li>點一下插入的圖，上方會出現「<b>圖形格式</b>」索引標籤，點它。</li>
           <li>在最左邊按「<b>轉換成圖形</b>」（見下圖位置），整張圖就變成 Word 原生圖形。</li>
@@ -426,12 +426,11 @@ details.help .body b{color:var(--ink)}
         <p class="hint">「轉換成圖形」只出現在點選圖片後的「圖形格式」索引標籤裡。若沒看到，先確認有點到圖片。</p>
         <b style="display:block;margin-top:10px">方法二：PPTX（相容性最好，免轉換）</b>
         <ol>
-          <li>按「<b>下載 PPTX（可編輯）</b>」，用 PowerPoint 開啟。</li>
+          <li>按「<b>下載 ▾</b>」→「<b>PPTX（可編輯）</b>」，用 PowerPoint 開啟。</li>
           <li>每個人物、每條線本來就是原生圖形，點了直接改，文字大小也在「常用」調。</li>
           <li>調好後 <code>Ctrl+A</code> 全選、複製，貼回 Word 即可（貼上的也是可編輯物件）。</li>
         </ol>
         <p class="hint">想把圖疊在紀錄文字上：先勾工具列「透明背景」再下載 PNG 或 SVG。</p>
-        <p class="hint">要把圖疊在紀錄文字上，勾「透明背景」再下載 PNG。</p>
       </div>
     </details>
 
@@ -587,27 +586,6 @@ details.help .body b{color:var(--ink)}
   <button id="mobEdit" class="on" onclick="mobPane('edit')">✎ 編輯資料</button>
   <button id="mobView" onclick="mobPane('view')">◫ 看圖</button>
 </nav>
-<div id="reportModal" class="rpt-bg" style="display:none" onclick="if(event.target===this)closeReport()">
-  <div class="rpt">
-    <div class="rpt-head"><h3>回報問題給開發者</h3><button class="del" onclick="closeReport()">✕</button></div>
-    <p class="hint" style="margin:0 0 10px">寫下發生了什麼事，越具體越好（例如：在哪個分頁、做了什麼動作、看到什麼結果）。<b>不會自動傳送任何資料</b>，下面的內容你都看得到。</p>
-    <div class="rpt-row">
-      <select id="rptType">
-        <option>畫出來的圖不對</option><option>按鈕沒反應／當掉</option><option>匯出的檔案有問題</option>
-        <option>符號或畫法不符合實務</option><option>功能建議</option><option>其他</option>
-      </select>
-    </div>
-    <textarea id="rptText" placeholder="例如：在生態圖的自由網絡圖，拖曳單位後連線沒有跟著移動。"></textarea>
-    <label class="chk" style="margin-top:8px"><input type="checkbox" id="rptTech" checked onchange="refreshReportPreview()"> 附上技術資訊（不含任何姓名、年齡或個案內容）</label>
-    <pre id="rptPreview"></pre>
-    <div class="rpt-act">
-      <button class="btn primary" id="rptMailBtn" onclick="sendReportMail()">用 Email 寄出</button>
-      <button class="btn" id="rptFormBtn" onclick="sendReportForm()" style="display:none">用線上表單回報</button>
-      <button class="btn" onclick="copyReport()">複製內容</button>
-    </div>
-    <p class="hint" id="rptNoMail" style="display:none">尚未設定收件信箱，請先按「複製內容」，再貼到 LINE 或訊息傳給開發者。</p>
-  </div>
-</div>
 <div id="toast"></div>
 
 <script>
@@ -625,17 +603,14 @@ const IS = () => 1;               // 圖內文字倍率（固定）
 const nodeScale = () => 1;        // 圖形倍率（固定）
 function applyScales(){}           // 保留呼叫點，不做任何事
 const INK='#12343B', GREY='#6b7772', SHADE='#D9D9D9';
-/* ===== 回報問題設定：填入收件信箱或 Google 表單網址即可啟用 ===== */
-const TOOL_VERSION='2026-10-12';
-const REPORT_EMAIL='a0986391797@gmail.com';
-const REPORT_FORM_URL='';     // 例：'https://forms.gle/xxxx'（Google 表單可設定每筆回覆寄信通知）
+/* ===== 回報問題：由頁尾公版「錯誤／建議」按鈕送進共用試算表 ===== */
+const TOOL_VERSION='2026-10-28';
 /* 只在本機記錄最近的錯誤訊息，不會自動傳送 */
 const ERR_LOG=[]; let errNotified=false;
 function logErr(msg,src){
   ERR_LOG.push(`[${new Date().toLocaleTimeString('zh-TW',{hour12:false})}] ${String(msg).slice(0,180)}${src?' @'+src:''}`);
   if(ERR_LOG.length>8) ERR_LOG.shift();
-  const d=document.getElementById('errDot'); if(d) d.style.display='inline-block';
-  if(!errNotified){ errNotified=true; setTimeout(()=>{ try{ toast('剛剛發生了一個錯誤，可以按右上「回報問題」告訴開發者'); }catch(e){} },300); }
+  if(!errNotified){ errNotified=true; setTimeout(()=>{ try{ toast('剛剛發生了一個錯誤，可以按右下角「錯誤／建議」告訴開發者'); }catch(e){} },300); }
 }
 window.addEventListener('error',e=>logErr(e.message, e.filename?String(e.filename).split('/').pop()+':'+e.lineno:''));
 window.addEventListener('unhandledrejection',e=>logErr('Promise: '+(e.reason&&e.reason.message||e.reason)));
@@ -2476,7 +2451,7 @@ function exportPNG(){
 }
 function exportPPTX(){
   if(typeof PptxGenJS==='undefined'){
-    toast('PPTX 元件載入失敗，請改用「下載 SVG」，在 Word 中轉換成圖形一樣可編輯');
+    toast('PPTX 元件載入失敗，請改用下載選單的「SVG 向量圖」，在 Word 中轉換成圖形一樣可編輯');
     return;
   }
   if(!D.length){ toast('目前圖是空的，先新增成員或載入範本'); return; }
@@ -2529,10 +2504,10 @@ function exportPPTX(){
   pptx.writeFile({fileName:fname('pptx')})
     .then(()=>toast('已下載 PPTX，每個圖形都可在 PowerPoint 中直接編輯'))
     .catch(err=>{ console.error('PPTX 匯出失敗',err);
-      toast('PPTX 產生失敗，請改用「下載 SVG」'); });
+      toast('PPTX 產生失敗，請改用下載選單的「SVG 向量圖」'); });
   }catch(err){
     console.error('PPTX 匯出錯誤',err);
-    toast('PPTX 匯出發生錯誤，請改用「下載 SVG」');
+    toast('PPTX 匯出發生錯誤，請改用下載選單的「SVG 向量圖」');
   }
 }
 function saveJSON(){
@@ -2576,44 +2551,6 @@ function techInfo(){
     `最近錯誤：${ERR_LOG.length?'\n  '+ERR_LOG.join('\n  '):'無'}`
   ].join('\n');
 }
-function reportBody(){
-  const t=document.getElementById('rptType').value, d=document.getElementById('rptText').value.trim();
-  return `【問題類型】${t}\n【描述】\n${d||'（未填寫）'}`+(document.getElementById('rptTech').checked?`\n\n【技術資訊】\n${techInfo()}`:'');
-}
-function refreshReportPreview(){
-  document.getElementById('rptPreview').textContent = document.getElementById('rptTech').checked ? techInfo() : '（不附技術資訊）';
-}
-function openReport(){
-  document.getElementById('reportModal').style.display='flex';
-  document.getElementById('rptMailBtn').style.display = REPORT_EMAIL ? '' : 'none';
-  document.getElementById('rptFormBtn').style.display = REPORT_FORM_URL ? '' : 'none';
-  document.getElementById('rptNoMail').style.display = (REPORT_EMAIL||REPORT_FORM_URL) ? 'none' : '';
-  if(ERR_LOG.length) document.getElementById('rptType').value='按鈕沒反應／當掉';
-  refreshReportPreview();
-  setTimeout(()=>document.getElementById('rptText').focus(),50);
-}
-function closeReport(){ document.getElementById('reportModal').style.display='none'; }
-function buildMailto(){
-  const subj=`[家系圖工具回報] ${document.getElementById('rptType').value}`;
-  return `mailto:${REPORT_EMAIL}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(reportBody().slice(0,1800))}`;
-}
-function sendReportMail(){
-  if(!REPORT_EMAIL) return;
-  location.href=buildMailto();
-  toast('已開啟郵件程式，確認內容後按寄出即可；沒跳出來的話請改按「複製內容」');
-}
-function sendReportForm(){
-  if(!REPORT_FORM_URL) return;
-  copyReport(true);
-  window.open(REPORT_FORM_URL,'_blank');
-}
-async function copyReport(quiet){
-  const txt=reportBody();
-  try{ await navigator.clipboard.writeText(txt); }
-  catch(e){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(_){} ta.remove(); }
-  toast(quiet?'內容已複製，請貼到表單裡送出':'已複製，可以貼到 Email、LINE 或訊息傳給開發者');
-}
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeReport(); });
 
 /* ===================== 本機暫存（localStorage） ===================== */
 const LS_AUTO='genoTool.autosave', LS_SLOTS='genoTool.slots', LS_DISMISS='genoTool.dismissAt';
@@ -2758,7 +2695,7 @@ function svgToPngBlob(svgStr,scale){
   });
 }
 async function exportDOCX(){
-  if(typeof JSZip==='undefined'){ toast('Word 元件未載入，請改用下載 SVG'); return; }
+  if(typeof JSZip==='undefined'){ toast('Word 元件未載入，請改用下載選單的 SVG'); return; }
   if(isEmptyState()){ toast('目前圖是空的，先新增成員或載入範本'); return; }
   toast('正在產生 Word…');
   try{
@@ -2826,7 +2763,7 @@ async function exportDOCX(){
     const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     download(blob,fname('docx'));
     toast('已下載 Word，開啟後點圖 →「圖形格式」→「轉換成圖形」即可編輯');
-  }catch(err){ console.error(err); toast('Word 產生失敗，請改用下載 SVG 或 PPTX'); }
+  }catch(err){ console.error(err); toast('Word 產生失敗，請改用下載選單的 SVG 或 PPTX'); }
 }
 
 /* ===================== 家系圖 → 生態圖 連動 ===================== */
@@ -2980,6 +2917,21 @@ function newChart(){
   const em=document.getElementById('ecoMembers'); if(em) em.value='';
   setMode('genogram'); setEditMode('form'); syncUI();
   offerUndo('已建立新的空白家系圖');
+}
+/* ---- 下載選單 ---- */
+function toggleDlMenu(ev){
+  ev.stopPropagation();
+  const m=document.getElementById('dlMenu'); m.classList.toggle('on');
+  if(m.classList.contains('on')) setTimeout(()=>document.addEventListener('pointerdown',closeDlOutside),0);
+}
+function closeDlOutside(e){ if(!e.target.closest('#dlMenu') && !e.target.closest('#dlBtn')){
+  document.getElementById('dlMenu').classList.remove('on');
+  document.removeEventListener('pointerdown',closeDlOutside); } }
+function dlPick(fn){
+  document.getElementById('dlMenu').classList.remove('on');
+  document.removeEventListener('pointerdown',closeDlOutside);
+  document.getElementById('hdrActions').classList.remove('on');
+  fn();
 }
 /* ---- 範本選單 ---- */
 function toggleTplMenu(ev){
@@ -3174,6 +3126,12 @@ checkResume();
    - 電腦 16:9、手機 9:16，自動依螢幕切換版面
    - 全部用 SVG 即時繪製：檔案小、文字清晰、可拖曳進度、可選章節
    - 每章「試試看」會關閉影片並在真實介面上標出要按的位置
+
+   維護提醒：影片是「照網站介面畫的」，不會自動跟著網站改。
+   改了網站的按鈕名稱或位置時，請一起檢查：
+     1. 下方 HDR／DLI（影片裡的標題列與下載選單）
+     2. 各章 caps（字幕）與 tryIt()（試試看要標示的按鈕）
+     3. 開啟網頁時主控台若出現「[教學影片] 網站介面已變更」警告，代表 TRY_TARGETS 有按鈕找不到了
    ===================================================================== */
 (function(){
 'use strict';
@@ -3204,24 +3162,32 @@ const LAYOUTS={
   d:{k:'d',W:1600,H:900,f:{tx:28,ty:84,s:1.16},c:{tx:690,ty:108,s:1.1},fs:1},
   m:{k:'m',W:900,H:1600,f:{tx:73,ty:120,s:1.45},c:{tx:50,ty:880,s:1.0},fs:1.45}
 };
-const HDR=[['new','＋ 建立新圖'],['tpl','範本 ▾'],['draft','暫存 ▾'],['json','存檔 JSON'],['open','開啟 JSON'],
-  ['svg','下載 SVG'],['png','下載 PNG'],['word','下載 Word'],['pptx','下載 PPTX（可編輯）',1]];
+/* 影片裡的標題列：要和網站真實標題列一致（改網站按鈕時記得一起改這裡） */
+const HDR=[['new','＋ 建立新圖'],['tpl','範本 ▾'],['draft','暫存 ▾'],['json','存檔 JSON'],['open','開啟 JSON'],['dl','下載 ▾',1]];
+const DLI=[['pptx','PPTX（可編輯）'],['word','Word'],['png','PNG 圖片'],['svg','SVG 向量圖']];
 
 /* ---------- 場景：每一幀都由時間 t 決定（可任意拖曳進度） ---------- */
 function mkScene(svg,L){
-  const S={L,svg,fns:[],K:[],menu:[]};
+  const S={L,svg,fns:[],K:[],menu:[],dlm:[]};
   S.fn=f=>{S.fns.push(f);return f;};
   S.F=(x,y)=>({x:L.f.tx+x*L.f.s,y:L.f.ty+y*L.f.s});
   S.Cv=(x,y)=>({x:L.c.tx+x*L.c.s,y:L.c.ty+y*L.c.s});
   /* 游標關鍵影格 */
   S.go=(t,p,o={})=>{S.K.push(Object.assign({t,x:p.x,y:p.y},o));};
   S.click=(t,p,o={})=>S.go(t,p,Object.assign({click:1},o));
-  S.clickF=(t,x,y,o)=>S.click(t,S.F(x,y),o);
+  /* 表單上的點以虛擬座標記錄，播放時再依「鏡頭」換算（手機版會放大跟著游標走） */
+  S.clickF=(t,x,y,o={})=>S.K.push(Object.assign({t,fx:x,fy:y,click:1},o));
+  S.camAt=()=>({k:1,vx:0,vy:0});
+  S.Fc=(x,y,t)=>{const c=S.camAt(t),k=L.f.s*c.k;return {x:L.f.tx+(x-c.vx)*k,y:L.f.ty+(y-c.vy)*k};};
+  S.kp=(kf,t)=>kf.fx!=null?S.Fc(kf.fx,kf.fy,t):kf;
   S.clickC=(t,x,y,o)=>S.click(t,S.Cv(x,y),o);
   /* 標題列按鈕：手機要先按「☰ 選單」 */
+  /* 下載格式在「下載 ▾」子選單裡，要多按一層 */
   S.hdr=(name,t)=>{
-    if(L.k==='m'){ S.click(t-.7,S.H('menu')); S.menu.push([t-.7,t+.25]); S.click(t,S.H(name)); }
-    else S.click(t,S.H(name));
+    const sub=DLI.some(d=>d[0]===name), t1=sub?t-.7:t;
+    if(L.k==='m'){ S.click(t1-.7,S.H('menu')); S.menu.push([t1-.7,t+.25]); }
+    if(sub){ S.click(t1,S.H('dl')); S.dlm.push([t1,t+.25]); }
+    S.click(t,S.H(name));
   };
   /* 漸入／漸出 */
   S.vis=(el,tin,tout,o={})=>{
@@ -3442,6 +3408,11 @@ function chrome(S,o={}){
       E('text',{x:x+w/2,y:32,'font-size':14,fill:'#e8f2f3','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,l);
       S.hpos[k]={x:x+w/2,y:32}; x-=8;
     }
+    { const l='▶ 教學影片', w=tw(l,14)+24; x-=w;
+      E('rect',{x,y:15,width:w,height:34,rx:6,fill:'transparent',stroke:C.amber},R);
+      E('text',{x:x+w/2,y:32,'font-size':14,fill:'#ffe2b0','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,l); }
+    S.dlBox={x:S.hpos.dl.x+44-300,y:56,w:300,ih:46,fs:15};
+    DLI.forEach(([k],i)=>{S.hpos[k]={x:S.dlBox.x+150,y:S.dlBox.y+42+i*46};});
     /* 左側面板與工具列 */
     E('rect',{x:0,y:hdrH,width:660,height:L.H-hdrH,fill:'#fff'},R);
     E('line',{x1:660,y1:hdrH,x2:660,y2:L.H,stroke:C.line},R);
@@ -3450,10 +3421,14 @@ function chrome(S,o={}){
       '↶ 復原　↷ 取消復原　│　重新自動排版　☑ 長幼排序　☐ 附圖例　☐ 彩色標示');
     E('text',{x:L.W-24,y:hdrH+22,'font-size':15,fill:C.muted,'text-anchor':'end','dominant-baseline':'central','font-family':FONT},R,'檢視 － 100% ＋ 符合');
   } else {
+    E('rect',{x:600,y:26,width:126,height:48,rx:8,fill:'transparent',stroke:C.amber},R);
+    E('text',{x:663,y:50,'font-size':24,fill:'#ffe2b0','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,'▶ 教學');
     E('rect',{x:740,y:26,width:134,height:48,rx:8,fill:'transparent',stroke:'#3d6d78'},R);
     E('text',{x:807,y:50,'font-size':24,fill:'#e8f2f3','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,'☰ 選單');
     S.hpos.menu={x:807,y:50};
     HDR.forEach(([k],i)=>{S.hpos[k]={x:710,y:136+i*64};});
+    S.dlBox={x:500,y:136+HDR.length*64-8,w:380,ih:64,fs:23};
+    DLI.forEach(([k],i)=>{S.hpos[k]={x:S.dlBox.x+190,y:S.dlBox.y+52+i*64};});
     E('rect',{x:0,y:hdrH,width:L.W,height:L.H-hdrH,fill:'url(#tutGrid)'},R);
     E('rect',{x:24,y:hdrH+10,width:852,height:730,rx:16,fill:'#fff',stroke:C.line},R);
     E('text',{x:50,y:860,'font-size':24,fill:C.teal,'font-weight':700,'dominant-baseline':'central','font-family':FONT},R,'◫ 看圖（手機版用底部按鈕切換）');
@@ -3463,11 +3438,25 @@ function chrome(S,o={}){
   const cp=S.Cv(0,0);
   E('rect',{x:cp.x,y:cp.y,width:800*L.c.s,height:560*L.c.s,rx:8,fill:'#fff',stroke:'#e2ddd4'},R);
   /* 虛擬座標群組 */
-  S.gForm=E('g',{transform:`translate(${L.f.tx},${L.f.ty}) scale(${L.f.s})`},svg);
+  /* 手機版表單外層裁切（鏡頭放大時不超出白色卡片） */
+  const fw=E('g',{},svg);
+  if(L.k==='m'){ const cpth=E('clipPath',{id:'tutFormClip'},S.defs); E('rect',{x:24,y:110,width:852,height:730,rx:16},cpth); fw.setAttribute('clip-path','url(#tutFormClip)'); }
+  S.gForm=E('g',{transform:`translate(${L.f.tx},${L.f.ty}) scale(${L.f.s})`},fw);
   S.gCanvas=E('g',{transform:`translate(${L.c.tx},${L.c.ty}) scale(${L.c.s})`},svg);
   S.gTop=E('g',{},svg);
 }
-/* 手機版：☰ 下拉選單（在 build 後呼叫，才會蓋在最上層） */
+/* 選單（在 build 後呼叫，才會蓋在最上層）：手機 ☰ 選單、「下載 ▾」子選單 */
+function menus(S){
+  mobileMenu(S);
+  if(!S.dlm.length) return;
+  const b=S.dlBox, g=E('g',{},S.gTop);
+  E('rect',{x:b.x,y:b.y,width:b.w,height:DLI.length*b.ih+40,rx:12,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},g);
+  E('text',{x:b.x+16,y:b.y+18,'font-size':b.fs*.75,fill:C.muted,'dominant-baseline':'central','font-family':FONT},g,'選擇檔案格式');
+  DLI.forEach(([k,l],i)=>{const y=S.hpos[k].y;
+    if(i===0) E('rect',{x:b.x+8,y:y-b.ih/2+3,width:b.w-16,height:b.ih-6,rx:6,fill:C.tealSoft},g);
+    E('text',{x:b.x+20,y,'font-size':b.fs,'font-weight':700,fill:C.ink,'dominant-baseline':'central','font-family':FONT},g,l);});
+  S.fn(t=>show(g,S.dlm.some(([a,c])=>t>=a&&t<c)?1:0));
+}
 function mobileMenu(S){
   if(S.L.k!=='m'||!S.menu.length) return;
   const g=E('g',{},S.gTop);
@@ -3479,6 +3468,23 @@ function mobileMenu(S){
   S.fn(t=>show(g,S.menu.some(([a,b])=>t>=a&&t<b)?1:0));
 }
 
+/* 手機版鏡頭：表單放大 1.4 倍，跟著游標在表單上的位置平移，字才看得清楚 */
+function setupCamera(S){
+  const L=S.L, FK=S.K.filter(k=>k.fx!=null).sort((a,b)=>a.t-b.t);
+  if(L.k!=='m'||!FK.length) return;
+  const KZ=1.4, focus=t=>{
+    let p=FK[0];
+    for(let j=0;j<FK.length-1;j++){ if(t<FK[j+1].t){const a=FK[j],b=FK[j+1],dur=Math.min(b.dur||.6,(b.t-a.t)*.9),q=ease(clamp((t-(b.t-dur))/dur));
+      return {x:lerp(a.fx,b.fx,q),y:lerp(a.fy,b.fy,q)};} p=FK[j+1]; }
+    return {x:p.fx,y:p.fy};
+  };
+  S.camAt=t=>{
+    const k=1+(KZ-1)*prog(t,FK[0].t-1.4,.9), f=focus(t);
+    const wv=520/k, hv=715/(L.f.s*k);
+    return {k, vx:clamp(f.x-wv/2,0,520-wv), vy:clamp(f.y-hv*.42,0,Math.max(0,540-hv))};
+  };
+  S.fn(t=>{const c=S.camAt(t); S.gForm.setAttribute('transform',`translate(${L.f.tx},${L.f.ty}) scale(${L.f.s*c.k}) translate(${-c.vx},${-c.vy})`);});
+}
 /* 家系圖放大群組（畫布上的圖更清楚）；S.Gz 把圖內座標換成全域座標給游標用 */
 function zoomG(S,k=1.3,cy=250){
   S.Gz=(x,y)=>S.Cv(400+(x-400)*k,cy+(y-cy)*k);
@@ -3680,7 +3686,7 @@ CH.push({title:'範本 × 貼逐字稿',sub:'不用從零開始',dur:26,
     G.union('GF','GM',{draw:[T0+.6,T0+1.1],out:15.6}); G.child('GF','GM','D',{draw:[T0+1.0,T0+1.5],out:15.6});
     G.union('D','Mo',{draw:[T0+1.2,T0+1.7],divorced:1,out:15.6}); G.child('D','Mo','C',{draw:[T0+1.6,T0+2.1],out:15.6});
     G.blob(['GF','GM','C'],{in:T0+2.2,out:15.6,r:46});
-    S.go(8.5,S.Cv(600,420)); S.click(10.9,S.F(204,68));
+    S.go(8.5,S.Cv(600,420)); S.clickF(10.9,204,68);
     /* 貼逐字稿 */
     const ig=E('g',{},S.gForm); S.vis(ig,11.0);
     u.text(14,106,'把訪談逐字稿或個案摘要貼進來，系統會自動抓出家庭成員與關係，',{p:ig,fs:12.5,fill:'#41504e'});
@@ -3715,8 +3721,8 @@ CH.push({title:'範本 × 貼逐字稿',sub:'不用從零開始',dur:26,
     S.go(19,S.Cv(640,200)); S.go(25,S.Cv(650,210));
   },
   tryIt(){
-    if(isMob()){ openHdr(); coach('.tpl-wrap > .btn','按「範本 ▾」選一個最接近個案的家庭結構'); }
-    else coach('.tpl-wrap > .btn','按「範本 ▾」選一個最接近個案的家庭結構；或在左側切到「貼逐字稿」');
+    if(isMob()){ openHdr(); coach('[onclick="toggleTplMenu(event)"]','按「範本 ▾」選一個最接近個案的家庭結構'); }
+    else coach('[onclick="toggleTplMenu(event)"]','按「範本 ▾」選一個最接近個案的家庭結構；或在左側切到「貼逐字稿」');
   }
 });
 
@@ -3801,9 +3807,9 @@ CH.push({title:'生態圖',sub:'盤點正式與非正式資源',dur:25,
 /* ---------- 5. 匯出 ---------- */
 CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
   caps:[[0,'畫好了，放進紀錄或簡報'],
-    [1.6,'「下載 PPTX（可編輯）」：每個人物、每條線都是原生圖形'],
+    [1.6,'「下載 ▾」→「PPTX（可編輯）」：每個人物、每條線都是原生圖形'],
     [5.4,'在 PowerPoint 點了就能改顏色、改文字'],
-    [10.6,'用 Word？下載 SVG →「圖形格式 → 轉換成圖形」→ 取消群組'],
+    [10.6,'用 Word？「下載 ▾」選 SVG →「圖形格式 → 轉換成圖形」→ 取消群組'],
     [16.2,'就能逐一點選方框、圓圈、線條修改；要疊在文字上就勾「透明背景」'],
     [19.6,'記得「存檔 JSON」：之後可再開啟繼續改；資料只存在你的電腦']],
   build(S){
@@ -3874,7 +3880,7 @@ CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
     dl('json',20.6,'⬇ 家系圖.json',C.teal);
     S.go(23,S.Cv(600,300));
   },
-  tryIt(){ if(isMob()) openHdr(); coach('[onclick^="exportPPTX"]','按「下載 PPTX（可編輯）」，用 PowerPoint 開啟即可修改'); }
+  tryIt(){ if(isMob()) openHdr(); coach('#dlBtn','按「下載 ▾」→「PPTX（可編輯）」，用 PowerPoint 開啟即可修改'); }
 });
 
 /* ---------- 6. 實務應用設計 ---------- */
@@ -3927,7 +3933,7 @@ CH.push({title:'實務應用',sub:'從會談到紀錄的一條龍',dur:28,noCurs
         [a,b,c].forEach((s,k)=>T(box.x+300,box.y+150+k*48,s,{p:w,fs:15.5,fill:k?C.text:C.teal,fw:k?400:700,anchor:'start'})); }
     });
   },
-  tryIt(){ if(isMob()) openHdr(); coach('.tpl-wrap > .btn','打開「範本 ▾」，挑一個最接近你個案的情境開始'); }
+  tryIt(){ if(isMob()) openHdr(); coach('[onclick="toggleTplMenu(event)"]','打開「範本 ▾」，挑一個最接近你個案的情境開始'); }
 });
 
 /* 第 6 章的小插圖 */
@@ -4091,7 +4097,8 @@ function build(i,k){
   chrome(S);
   S.go(0,{x:L.W*.62,y:L.H*.55});
   CH[i].build(S);
-  mobileMenu(S);
+  menus(S);
+  setupCamera(S);
   /* 章節標題卡 */
   const ic=E('g',{},S.gTop), w=L.k==='d'?720:780, h=L.k==='d'?210:300;
   E('rect',{x:0,y:0,width:L.W,height:L.H,fill:'rgba(247,245,241,.82)'},ic);
@@ -4110,14 +4117,15 @@ function build(i,k){
   S.fn(t=>{
     const K=S.K; let p=K[0];
     for(let j=0;j<K.length-1;j++){ if(t<K[j+1].t){const a=K[j],b=K[j+1],dur=Math.min(b.dur||.6,(b.t-a.t)*.9),s=b.t-dur,q=ease(clamp((t-s)/dur));
-        p={x:lerp(a.x,b.x,q),y:lerp(a.y,b.y,q),press:a.press&&b.press}; break;} p=K[j+1]; }
+        const pa=S.kp(a,t),pb=S.kp(b,t); p={x:lerp(pa.x,pb.x,q),y:lerp(pa.y,pb.y,q),press:a.press&&b.press}; break;} p=K[j+1]; }
+    p=Object.assign({},p,S.kp(p,t));
     let down=p.press?1:0, rp=null;
     for(const k of K) if(k.click&&t>=k.t-.08&&t<k.t+.55) rp=k;
     if(rp&&t<rp.t+.12) down=1;
     ptr.setAttribute('transform',`scale(${cs*(down?.86:1)})`);
     cur.setAttribute('transform',`translate(${p.x},${p.y})`);
     show(cur,(t<.9||CH[i].noCursor)?0:1);
-    if(rp&&t>=rp.t){const q=(t-rp.t)/.55; rip.setAttribute('cx',rp.x); rip.setAttribute('cy',rp.y); rip.setAttribute('r',lerp(6,30*cs,q)); show(rip,.7*(1-q));}
+    if(rp&&t>=rp.t){const q=(t-rp.t)/.55, rq=S.kp(rp,t); rip.setAttribute('cx',rq.x); rip.setAttribute('cy',rq.y); rip.setAttribute('r',lerp(6,30*cs,q)); show(rip,.7*(1-q));}
     else show(rip,0);
   });
   curI=i; curL=k; lastCap='';
@@ -4185,11 +4193,18 @@ function coach(sel,msg){
 }
 
 /* ---------- 入口：標題列按鈕＋第一次使用提示 ---------- */
+/* 「試試看」會標示的真實按鈕；網站改版後若找不到，開啟網頁時會在主控台提醒 */
+const TRY_TARGETS={'新增成員':'[onclick="addPerson()"]','新增情感連結':'[onclick="addTie()"]',
+  '範本選單':'[onclick="toggleTplMenu(event)"]','生態圖分頁':'#tabE','下載選單':'#dlBtn','手機選單':'#hdrActions'};
+function selfCheck(){
+  const miss=Object.entries(TRY_TARGETS).filter(([,q])=>!document.querySelector(q)).map(([n])=>n);
+  if(miss.length) console.warn('[教學影片] 網站介面已變更，找不到：'+miss.join('、')+'。請同步更新 tutorial.js 的影片內容與 TRY_TARGETS。');
+}
 const SEEN='geno_tut_seen_v1';
 function seen(){try{return localStorage.getItem(SEEN)==='1';}catch(e){return true;}}
 function markSeen(){try{localStorage.setItem(SEEN,'1');}catch(e){}}
 function init(){
-  injectCSS();
+  injectCSS(); selfCheck();
   const hb=document.createElement('button'); hb.className='btn ghost tut-hbtn'; hb.type='button';
   hb.innerHTML='▶ 教學<span class="tut-long">影片</span>'; hb.title='觀看操作教學動畫（約 2.5 分鐘）';
   hb.onclick=e=>{e.stopPropagation();openTut(0);};
@@ -4214,10 +4229,10 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 </script>
 <!-- 公版「錯誤／建議」回報按鈕（通報進共用試算表，「網站」欄位＝家系圖生態圖工具） -->
 <script>
-/* 回報時自動帶入使用者正在用的分頁，以及網頁自動記錄的最近錯誤 */
+/* 回報時自動帶入：目前分頁＋技術資訊（版本、裝置、數量、最近錯誤；不含姓名或個案內容） */
 window.REPORT_CONTEXT=()=>{
-  const errs=(typeof ERR_LOG!=='undefined'&&ERR_LOG.length)?('最近錯誤：'+ERR_LOG.slice(-3).join(' | ')).slice(0,300):'';
-  return {item:document.getElementById('tabE')?.classList.contains('on')?'生態圖':'家系圖', itemName:errs};
+  let tech=''; try{ tech=techInfo().replace(/\n\s*/g,'；'); }catch(e){}
+  return {item:document.getElementById('tabE')?.classList.contains('on')?'生態圖':'家系圖', itemName:tech.slice(0,600)};
 };
 /* 縮小成角落小圓鈕：滑過或聚焦才展開文字；手機版避開底部「編輯／看圖」列 */
 window.addEventListener('load',()=>{
