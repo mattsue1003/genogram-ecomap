@@ -3883,7 +3883,79 @@ CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
   tryIt(){ if(isMob()) openHdr(); coach('#dlBtn','按「下載 ▾」→「PPTX（可編輯）」，用 PowerPoint 開啟即可修改'); }
 });
 
-/* ---------- 6. 實務應用設計 ---------- */
+/* ---------- 6. 存檔與續編 ---------- */
+CH.push({title:'存檔與續編',sub:'每位個案存成一個檔，日後再改',dur:24,
+  caps:[[0,'每位個案都能存成一個檔案，日後再打開繼續修改'],
+    [1.6,'① 畫好後按上方「存檔 JSON」，下載一個 .json 檔'],
+    [4.4,'建議用個案代號命名，例如「A001家系圖.json」，不要用真實姓名'],
+    [8.6,'② 下次打開工具，按「開啟 JSON」選擇檔案，圖會完整載入'],
+    [14.0,'③「暫存」可在同一台電腦先存好幾份；清除瀏覽器資料後會消失'],
+    [19.4,'資料只存在你的電腦、不會上傳；檔案請依機構個資規範保管']],
+  build(S){
+    const L=S.L, u=UI(S.gForm);
+    u.tabs(S,null); u.pills(S,54,['表格','關係矩陣','貼逐字稿'],[[0,0]]);
+    collapsedSecs(S,u,[['成員',4],['婚姻／伴侶關係',1],['情感關係',2],['生活圈（同住／關係密切）',1]],S.gForm);
+    /* 畫布：存檔後關掉（空白），開啟檔案後整張圖回來 */
+    const zg=zoomG(S), G=Geno(S,zg);
+    baseFamily(S,G,{}); G.tie('F','K','conflict',{}); G.tie('M','S','close',{}); G.blob(['M','K','S'],{});
+    S.fn(t=>show(zg,clamp((1-prog(t,8.0,.4))+prog(t,12.5,.6))));
+    const blank=E('g',{},S.gCanvas); S.fn(t=>show(blank,t>=8.4&&t<12.4?1:0));
+    E('text',{x:400,y:270,'text-anchor':'middle','dominant-baseline':'central','font-size':20,fill:C.muted,'font-family':FONT},blank,'下次打開工具：空白畫面');
+    /* 小視窗（畫布座標） */
+    const win=(tin,tout,title)=>{
+      const g=E('g',{},S.gCanvas);
+      S.fn(t=>{const k=prog(t,tin,.35)*(1-prog(t,tout,.3)); show(g,k); g.setAttribute('transform',`translate(0,${(1-k)*20})`);});
+      E('rect',{x:170,y:110,width:460,height:270,rx:14,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},g);
+      const w=UI(g); w.text(196,144,title,{fs:19,fw:700,fill:C.ink}); return {g,w};
+    };
+    /* ① 存檔 */
+    S.hdr('json',2.6);
+    const sv=win(3.0,6.5,'儲存檔案');
+    sv.w.text(196,186,'檔名',{fs:14,fill:C.muted});
+    const fn=sv.w.field(196,200,408,'',{h:42,fs:17}); S.type(fn.t,'A001家系圖.json',3.7,4.8,fn.box);
+    sv.w.text(196,270,'位置',{fs:14,fill:C.muted}); sv.w.text(244,270,'文件 › 個案資料',{fs:16,fill:C.ink});
+    sv.w.btn(424,322,'取消',{w:80,h:36,fw:400}); const sb=sv.w.btn(516,322,'儲存',{w:88,h:36,primary:1});
+    S.clickC(3.5,400,221); S.clickC(6.2,sb.cx,sb.cy);
+    const toast=E('g',{},S.gCanvas); S.fn(t=>show(toast,t>=6.6&&t<8.0?1:0));
+    E('rect',{x:240,y:24,width:320,height:44,rx:22,fill:C.ink},toast);
+    E('text',{x:400,y:46,'text-anchor':'middle','dominant-baseline':'central','font-size':16,fill:'#fff','font-family':FONT},toast,'已存檔：A001家系圖.json');
+    /* ② 開啟 */
+    S.hdr('open',9.4);
+    const op=win(9.8,12.4,'開啟檔案');
+    const files=['A001家系圖.json','B002家系圖.json','C003生態圖.json'];
+    const hl=op.w.rect(186,170,428,40,{rx:8,fill:C.tealSoft,stroke:'none'}); S.fn(t=>show(hl,t>=11.0?1:0));
+    files.forEach((f,i)=>{op.w.text(206,190+i*46,'▤',{fs:16,fill:C.teal}); op.w.text(232,190+i*46,f,{fs:16,fill:C.ink});});
+    op.w.btn(424,322,'取消',{w:80,h:36,fw:400}); const ob=op.w.btn(516,322,'開啟',{w:88,h:36,primary:1});
+    S.clickC(10.9,330,190); S.clickC(12.0,ob.cx,ob.cy);
+    /* ③ 暫存（標題列下拉選單，全域座標） */
+    S.hdr('draft',14.4);
+    const isD=L.k==='d', fs=isD?15:24, ih=isD?40:62;
+    const b=isD?{x:S.H('draft').x-80,y:58,w:400}:{x:60,y:560,w:780};
+    const dm=E('g',{},S.gTop); S.fn(t=>show(dm,t>=14.5&&t<19.2?1:0));
+    E('rect',{x:b.x,y:b.y,width:b.w,height:ih*4+40,rx:12,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},dm);
+    const T=(x,y,s2,o={})=>E('text',{x,y,'font-size':o.fs||fs,fill:o.fill||C.text,'font-weight':o.fw||400,'text-anchor':o.anchor||'start','dominant-baseline':'central','font-family':FONT},dm,s2);
+    T(b.x+18,b.y+ih*.6,'● 自動暫存：剛剛',{fill:C.teal,fs:fs*.85});
+    T(b.x+18,b.y+ih*1.6,'A001 初談版'); T(b.x+b.w-18,b.y+ih*1.6,'10/28 14:20',{anchor:'end',fill:C.muted,fs:fs*.8});
+    const s2=E('g',{},dm); S.fn(t=>show(s2,t>=16.6?1:0));
+    E('rect',{x:b.x+8,y:b.y+ih*2.1,width:b.w-16,height:ih,rx:6,fill:C.tealSoft},s2);
+    E('text',{x:b.x+18,y:b.y+ih*2.6,'font-size':fs,fill:C.ink,'font-weight':700,'dominant-baseline':'central','font-family':FONT},s2,'A001 第二次會談');
+    E('text',{x:b.x+b.w-18,y:b.y+ih*2.6,'font-size':fs*.8,fill:C.muted,'text-anchor':'end','dominant-baseline':'central','font-family':FONT},s2,'剛剛');
+    const fy=b.y+ih*3.3, fw=b.w-36-(isD?110:170);
+    const fbox=E('rect',{x:b.x+18,y:fy,width:fw,height:ih*.85,rx:6,fill:'#fff',stroke:C.line},dm);
+    const ftx=T(b.x+28,fy+ih*.42,'');
+    S.fn(t=>{ if(t>=16.6){ftx.textContent='';} });
+    S.type(ftx,'A001 第二次會談',15.2,16.0,fbox);
+    S.fn(t=>{ if(t>=16.6) ftx.textContent=''; });
+    const bx=b.x+18+fw+10, bw=b.w-36-fw-10;
+    E('rect',{x:bx,y:fy,width:bw,height:ih*.85,rx:6,fill:C.orange},dm);
+    T(bx+bw/2,fy+ih*.42,'＋ 暫存',{anchor:'middle',fill:'#fff',fw:700});
+    S.click(15.0,{x:b.x+18+fw/2,y:fy+ih*.42}); S.click(16.4,{x:bx+bw/2,y:fy+ih*.42});
+    S.go(20,S.Cv(600,300));
+  },
+  tryIt(){ if(isMob()) openHdr(); coach('[onclick^="saveJSON"]','畫好後按「存檔 JSON」；下次按「開啟 JSON」選檔案就能繼續改'); }
+});
+
+/* ---------- 7. 實務應用設計 ---------- */
 CH.push({title:'實務應用',sub:'從會談到紀錄的一條龍',dur:28,noCursor:1,
   caps:[[0,'實務上怎麼用？從會談到紀錄，一條龍完成'],
     [1.6,'會談蒐集 → 建圖 → 標示關係 → 盤點資源 → 放進紀錄'],
@@ -4195,7 +4267,7 @@ function coach(sel,msg){
 /* ---------- 入口：標題列按鈕＋第一次使用提示 ---------- */
 /* 「試試看」會標示的真實按鈕；網站改版後若找不到，開啟網頁時會在主控台提醒 */
 const TRY_TARGETS={'新增成員':'[onclick="addPerson()"]','新增情感連結':'[onclick="addTie()"]',
-  '範本選單':'[onclick="toggleTplMenu(event)"]','生態圖分頁':'#tabE','下載選單':'#dlBtn','手機選單':'#hdrActions'};
+  '範本選單':'[onclick="toggleTplMenu(event)"]','生態圖分頁':'#tabE','下載選單':'#dlBtn','手機選單':'#hdrActions','存檔 JSON':'[onclick^="saveJSON"]'};
 function selfCheck(){
   const miss=Object.entries(TRY_TARGETS).filter(([,q])=>!document.querySelector(q)).map(([n])=>n);
   if(miss.length) console.warn('[教學影片] 網站介面已變更，找不到：'+miss.join('、')+'。請同步更新 tutorial.js 的影片內容與 TRY_TARGETS。');
@@ -4206,14 +4278,14 @@ function markSeen(){try{localStorage.setItem(SEEN,'1');}catch(e){}}
 function init(){
   injectCSS(); selfCheck();
   const hb=document.createElement('button'); hb.className='btn ghost tut-hbtn'; hb.type='button';
-  hb.innerHTML='▶ 教學<span class="tut-long">影片</span>'; hb.title='觀看操作教學動畫（約 2.5 分鐘）';
+  hb.innerHTML='▶ 教學<span class="tut-long">影片</span>'; hb.title='觀看操作教學動畫（約 3 分鐘）';
   hb.onclick=e=>{e.stopPropagation();openTut(0);};
   const st=document.createElement('style'); st.textContent='@media (max-width:900px){.tut-long{display:none}}'; document.head.appendChild(st);
   const anchor=document.getElementById('hdrMenuBtn')||document.querySelector('header .spacer');
   if(anchor) anchor.parentNode.insertBefore(hb,anchor); else document.body.appendChild(hb);
   if(!seen()){
     const f=document.createElement('div'); f.className='tut-fab';
-    f.innerHTML='<button class="go">▶ 第一次用？看 2 分鐘教學</button><button class="no" aria-label="不用了">✕</button>';
+    f.innerHTML='<button class="go">▶ 第一次用？看 3 分鐘教學</button><button class="no" aria-label="不用了">✕</button>';
     f.querySelector('.go').onclick=()=>openTut(0);
     f.querySelector('.no').onclick=()=>{markSeen();f.remove();};
     document.body.appendChild(f);
