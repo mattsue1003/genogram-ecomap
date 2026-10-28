@@ -4013,12 +4013,13 @@ function injectCSS(){
 @media (max-width:900px){.tut-bg.m{background:#0f2a30}.tut-bg.m .tut{width:min(100vw,calc((100dvh - 128px)*9/16))}}
 /* 標題列按鈕與首次提示 */
 .tut-hbtn{border-color:var(--amber,#F4A93C)!important;color:#ffe2b0!important}
-.tut-fab{position:fixed;right:18px;bottom:18px;z-index:90;display:flex;align-items:center;gap:4px;background:#12343B;color:#fff;border-radius:99px;
+.tut-fab{position:fixed;right:18px;bottom:64px;z-index:90;display:flex;align-items:center;gap:4px;background:#12343B;color:#fff;border-radius:99px;
   box-shadow:0 10px 30px rgba(18,52,59,.35);padding:4px 4px 4px 4px;font-family:var(--font,${FONT});animation:tutIn .5s ease both}
 .tut-fab button{border:0;background:transparent;color:#fff;font-family:inherit;cursor:pointer}
 .tut-fab .go{background:var(--orange,#E8552D);border-radius:99px;padding:9px 16px;font-size:14px;font-weight:700}
 .tut-fab .no{font-size:18px;padding:4px 10px;color:#b9cfd3}
-@media (max-width:900px){.tut-fab{bottom:78px;right:12px}}
+@media (max-width:900px){.tut-fab{bottom:124px;right:12px}}
+body.tut-open [data-oth-report]{display:none!important}
 @keyframes tutIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 /* 試試看：聚光燈 */
 .tut-ring{position:fixed;z-index:9990;border-radius:10px;pointer-events:none;box-shadow:0 0 0 4px #F4A93C,0 0 0 9999px rgba(8,22,26,.5);animation:tutPulse 1.3s ease-in-out infinite;transition:all .25s}
@@ -4154,12 +4155,12 @@ function seek(t){ T=clamp(t,0,TOTAL-.001); render(); }
 function openTut(ch){
   if(!root){ injectCSS(); buildDOM(); }
   markSeen(); document.querySelector('.tut-fab')?.remove();
-  root.classList.add('on'); applyLayout();
+  root.classList.add('on'); document.body.classList.add('tut-open'); applyLayout();
   T=ch!=null?STARTS[ch]+.01:(T>=TOTAL-.1?0:T);
   render(true); play();
   setTimeout(()=>root.querySelector('.tut-play').focus(),50);
 }
-function closeTut(){ pause(); root.classList.remove('on'); }
+function closeTut(){ pause(); root.classList.remove('on'); document.body.classList.remove('tut-open'); }
 
 /* ---------- 試試看：在真實介面上標示 ---------- */
 function prepGeno(){
@@ -4212,5 +4213,26 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 })();
 
 </script>
+<!-- 公版「錯誤／建議」回報按鈕（通報進共用試算表，「網站」欄位＝家系圖生態圖工具） -->
+<script>
+/* 回報時自動帶入使用者正在用的分頁 */
+window.REPORT_CONTEXT=()=>({item:document.getElementById('tabE')?.classList.contains('on')?'生態圖':'家系圖'});
+/* 縮小成角落小圓鈕：滑過或聚焦才展開文字；手機版避開底部「編輯／看圖」列 */
+window.addEventListener('load',()=>{
+  const host=document.querySelector('[data-oth-report]'); if(!host||!host.shadowRoot) return;
+  const st=document.createElement('style');
+  st.textContent=`.fab{width:34px;height:34px;padding:0;gap:0;justify-content:center;font-size:0;opacity:.72;right:14px;
+      box-shadow:0 2px 8px rgba(0,0,0,.14),0 0 0 1.5px #028090 inset;transition:opacity .2s}
+    .fab:hover,.fab:focus-visible{opacity:1;width:auto;padding:0 12px;gap:6px;font-size:12.5px}
+    .fab svg{width:15px;height:15px}
+    @media (max-width:900px){.fab{bottom:calc(74px + env(safe-area-inset-bottom,0px));right:10px}}`;
+  host.shadowRoot.appendChild(st);
+  const fab=host.shadowRoot.querySelector('.fab'); if(fab){fab.title='回報錯誤或建議';fab.setAttribute('aria-label','回報錯誤或建議');}
+});
+/* 網站本身標題列的「回報問題」（含錯誤紀錄、Email）維持原功能；公版表單改由 openSharedReport() 開啟 */
+(()=>{const site=window.openReport;
+  window.addEventListener('load',()=>{ if(window.openReport!==site){ window.openSharedReport=window.openReport; window.openReport=site; } });})();
+</script>
+<script src="https://mattsue1003.github.io/oth-report-button/report.js" data-site="家系圖生態圖工具" data-color="#028090" data-label="錯誤／建議" data-offset="16" defer></script>
 </body>
 </html>
