@@ -395,7 +395,6 @@ details.help .body b{color:var(--ink)}
   <button class="btn ghost" onclick="exportPNG();hdrActions.classList.remove('on')">下載 PNG</button>
   <button class="btn ghost" onclick="exportDOCX();hdrActions.classList.remove('on')">下載 Word</button>
   <button class="btn primary" onclick="exportPPTX();hdrActions.classList.remove('on')">下載 PPTX（可編輯）</button>
-  <button class="btn ghost" id="reportBtn" onclick="openReport();hdrActions.classList.remove('on')">回報問題<span id="errDot" class="errdot" style="display:none"></span></button>
   </div>
 </header>
 <div id="resumeBar">
@@ -4215,8 +4214,11 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 </script>
 <!-- 公版「錯誤／建議」回報按鈕（通報進共用試算表，「網站」欄位＝家系圖生態圖工具） -->
 <script>
-/* 回報時自動帶入使用者正在用的分頁 */
-window.REPORT_CONTEXT=()=>({item:document.getElementById('tabE')?.classList.contains('on')?'生態圖':'家系圖'});
+/* 回報時自動帶入使用者正在用的分頁，以及網頁自動記錄的最近錯誤 */
+window.REPORT_CONTEXT=()=>{
+  const errs=(typeof ERR_LOG!=='undefined'&&ERR_LOG.length)?('最近錯誤：'+ERR_LOG.slice(-3).join(' | ')).slice(0,300):'';
+  return {item:document.getElementById('tabE')?.classList.contains('on')?'生態圖':'家系圖', itemName:errs};
+};
 /* 縮小成角落小圓鈕：滑過或聚焦才展開文字；手機版避開底部「編輯／看圖」列 */
 window.addEventListener('load',()=>{
   const host=document.querySelector('[data-oth-report]'); if(!host||!host.shadowRoot) return;
@@ -4229,9 +4231,6 @@ window.addEventListener('load',()=>{
   host.shadowRoot.appendChild(st);
   const fab=host.shadowRoot.querySelector('.fab'); if(fab){fab.title='回報錯誤或建議';fab.setAttribute('aria-label','回報錯誤或建議');}
 });
-/* 網站本身標題列的「回報問題」（含錯誤紀錄、Email）維持原功能；公版表單改由 openSharedReport() 開啟 */
-(()=>{const site=window.openReport;
-  window.addEventListener('load',()=>{ if(window.openReport!==site){ window.openSharedReport=window.openReport; window.openReport=site; } });})();
 </script>
 <script src="https://mattsue1003.github.io/oth-report-button/report.js" data-site="家系圖生態圖工具" data-color="#028090" data-label="錯誤／建議" data-offset="16" defer></script>
 </body>
