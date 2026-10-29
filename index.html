@@ -219,6 +219,11 @@ table.mx td.cell.hasrel{background:#eaf5f1}
 .hint{font-size:11.5px;color:var(--muted);line-height:1.65;margin:6px 0 0}
 .row{border:1px solid #e6e1d8;border-radius:8px;padding:9px;margin-bottom:8px;background:#fcfbf9}
 .row .top{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+/* 婚姻列：關係類型選項很長，兩位成員放第一行、類型放第二行，成員名字才看得到 */
+#unionList .row .top.pair{flex-wrap:wrap;row-gap:6px}
+#unionList .row .top.pair .f-mem{order:1;flex:1 1 0!important;min-width:0}
+#unionList .row .top.pair .del{order:2}
+#unionList .row .top.pair .f-type{order:3;flex:1 1 100%}
 .row .top .ord{display:flex;flex-direction:column;align-items:center;gap:1px;flex:0 0 auto}
 .row .top .idx{font-size:11px;color:#fff;background:var(--teal);width:20px;height:20px;border-radius:50%;display:grid;place-items:center}
 .row .top .mv{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:8px;line-height:1;padding:0;height:9px}
@@ -269,6 +274,17 @@ details.help .body code{background:var(--teal-soft);padding:1px 5px;border-radiu
 details.help .body b{color:var(--ink)}
 .help-fig{margin:8px 0;border:1px solid #e6e1d8;border-radius:8px;overflow:hidden;background:#2b2b2b}
 .help-fig svg{display:block;width:100%;height:auto}
+/* 存檔對話框 */
+.save-bg{position:fixed;inset:0;background:rgba(18,52,59,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.save-box{background:#fff;border-radius:14px;width:min(440px,100%);padding:20px 22px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.save-box h3{margin:0 0 12px;font-size:17px;color:var(--ink)}
+.save-box label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.save-row{display:flex;align-items:center;gap:6px}
+.save-row input{flex:1;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-family:var(--font)}
+.save-row input:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal)}
+.save-row span{color:var(--muted);font-size:14px}
+.save-box .hint{margin:10px 0 0}
+.save-act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
 #toast.on{pointer-events:auto}
 .undo-btn{margin-left:10px;border:1px solid var(--amber);background:transparent;color:var(--amber);border-radius:5px;padding:3px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
@@ -326,6 +342,11 @@ details.help .body b{color:var(--ink)}
   .row .top .del{order:2;margin-left:auto}
   .row .top select{order:3;flex:1 1 55%}
   .row .top .f-age{order:4;flex:0 0 78px}
+  /* 婚姻、情感列：兩位成員並排在第一行，關係類型獨立一行，名字才不會被擠掉 */
+  .row .top.pair .idx{order:0}
+  .row .top.pair .f-mem{order:1;flex:1 1 0!important;min-width:0}
+  .row .top.pair .del{order:2;margin-left:0}
+  .row .top.pair .f-type{order:3;flex:1 1 100%;min-width:0}
   #toast{bottom:84px;max-width:92vw;text-align:center}
   .modeswitch{padding:10px 12px 0;flex-wrap:wrap}
   .modeswitch .ms-hint{display:none}
@@ -586,6 +607,18 @@ details.help .body b{color:var(--ink)}
   <button id="mobEdit" class="on" onclick="mobPane('edit')">✎ 編輯資料</button>
   <button id="mobView" onclick="mobPane('view')">◫ 看圖</button>
 </nav>
+<div id="saveModal" class="save-bg" style="display:none" onclick="if(event.target===this)closeSaveModal()">
+  <div class="save-box" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
+    <h3 id="saveTitle">存檔 JSON</h3>
+    <label for="saveName">檔案名稱</label>
+    <div class="save-row"><input type="text" id="saveName" autocomplete="off"
+      onkeydown="if(event.key==='Enter')confirmSaveJSON();if(event.key==='Escape')closeSaveModal()"><span>.json</span></div>
+    <p class="hint">建議用個案代號命名，例如「A001家系圖」，<b>請勿使用個案真實姓名</b>。<br>
+      檔案會存到瀏覽器的「下載」位置；之後按「開啟 JSON」選這個檔案即可繼續修改。</p>
+    <div class="save-act"><button class="btn" onclick="closeSaveModal()">取消</button>
+      <button class="btn primary" onclick="confirmSaveJSON()">儲存</button></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -691,7 +724,7 @@ function setMode(m){
      && state.geno.persons.some(p=>p.index)){
     if(importCenterFromGeno(false)) toast('已自動從家系圖帶入中心家庭，可在左側修改');
   }
-  if(m==='ecomap'){ syncGenoSystems(); renderGenoLink(); if(m==='ecomap'&&ecoMode==='network') ensureNetworkLinks(); }
+  if(m==='ecomap'){ syncGenoSystems(); renderGenoLink(); if(ecoMode==='network') ensureNetworkLinks(); renderLinkList(); }   // 自動補上的連線也要列進左側清單
   tabG.classList.toggle('on',m==='genogram');
   tabE.classList.toggle('on',m==='ecomap');
   panelG.style.display = m==='genogram'?'':'none';
@@ -755,10 +788,10 @@ function syncUI(){
 
   unionList.innerHTML = state.geno.unions.length ? state.geno.unions.map((u,i)=>`
     <div class="row">
-      <div class="top">
+      <div class="top pair">
         <span class="idx">${i+1}</span>
-        <select style="flex:1" onchange="setU('${u.id}','a',this.value)">${opts(u.a)}</select>
-        <select onchange="setU('${u.id}','type',this.value)">
+        <select class="f-mem" style="flex:1" onchange="setU('${u.id}','a',this.value)">${opts(u.a)}</select>
+        <select class="f-type" onchange="setU('${u.id}','type',this.value)">
           <option value="married" ${u.type==='married'?'selected':''}>結婚</option>
           <option value="divorced" ${u.type==='divorced'?'selected':''}>離婚</option>
           <option value="separated" ${u.type==='separated'?'selected':''}>分居</option>
@@ -766,7 +799,7 @@ function syncUI(){
           <option value="dating" ${u.type==='dating'?'selected':''}>交往／未婚生子（未同居）</option>
           <option value="breakup" ${u.type==='breakup'?'selected':''}>分手（曾交往）</option>
         </select>
-        <select style="flex:1" onchange="setU('${u.id}','b',this.value)">${opts(u.b)}</select>
+        <select class="f-mem" style="flex:1" onchange="setU('${u.id}','b',this.value)">${opts(u.b)}</select>
         <button class="del" onclick="del(state.geno.unions,'${u.id}')">✕</button>
       </div>
       ${(!P(u.a)||!P(u.b)||u.a===u.b)?'<div class="warn">↑ 請在兩側各選一位（不同）成員，連線才會出現</div>':''}
@@ -791,12 +824,12 @@ function syncUI(){
     </div>`).join('') : `<div class="empty">尚未建立婚姻／伴侶關係</div>`;
 
   tieList.innerHTML = state.geno.ties.length ? state.geno.ties.map(t=>`
-    <div class="row"><div class="top">
-      <select style="flex:1" onchange="setT('${t.id}','a',this.value)">${opts(t.a,true)}</select>
-      <select onchange="setT('${t.id}','type',this.value)">
+    <div class="row"><div class="top pair">
+      <select class="f-mem" style="flex:1" onchange="setT('${t.id}','a',this.value)">${opts(t.a,true)}</select>
+      <select class="f-type" onchange="setT('${t.id}','type',this.value)">
         ${TIE_ORDER.map(k=>`<option value="${k}" ${t.type===k?'selected':''}>${TIE_LABEL[k]}</option>`).join('')}
       </select>
-      <select style="flex:1" onchange="setT('${t.id}','b',this.value)">${opts(t.b,true)}</select>
+      <select class="f-mem" style="flex:1" onchange="setT('${t.id}','b',this.value)">${opts(t.b,true)}</select>
       <button class="del" onclick="del(state.geno.ties,'${t.id}')">✕</button>
     </div>${(!P(t.a)||!P(t.b)||t.a===t.b)?'<div class="warn">↑ 請在兩側各選一位（不同）成員，連線才會出現</div>':''}</div>`).join('') : `<div class="empty">尚未建立情感連結</div>`;
 
@@ -2510,14 +2543,29 @@ function exportPPTX(){
     toast('PPTX 匯出發生錯誤，請改用下載選單的「SVG 向量圖」');
   }
 }
+/* 存檔前先詢問檔名（建議用個案代號，避免真實姓名） */
+let lastFileName='';
 function saveJSON(){
+  const m=document.getElementById('saveModal'), inp=document.getElementById('saveName');
+  inp.value=lastFileName||`家系圖_${stamp()}`;
+  m.style.display='flex';
+  setTimeout(()=>{ inp.focus(); inp.select(); },30);
+}
+function closeSaveModal(){ document.getElementById('saveModal').style.display='none'; }
+function confirmSaveJSON(){
+  let nm=(document.getElementById('saveName').value||'').trim().replace(/\.json$/i,'').replace(/[\\/:*?"<>|]/g,'_');
+  if(!nm){ toast('請輸入檔案名稱'); document.getElementById('saveName').focus(); return; }
+  lastFileName=nm; closeSaveModal(); doSaveJSON(nm+'.json');
+}
+function doSaveJSON(filename){
   const opt={age:optAge.value,sort:optSort.checked,legend:optLegend.checked,color:optColor.checked,
              index:optIndex.value,zoom,icons:document.getElementById('optCenterIcons')?.checked,ecoMode};
-  download(new Blob([JSON.stringify({v:3,opt,...state},null,2)],{type:'application/json'}),`案家圖資_${stamp()}.json`);
-  toast('已存檔，下次可用「開啟 JSON」續編');
+  download(new Blob([JSON.stringify({v:3,opt,...state},null,2)],{type:'application/json'}),filename);
+  toast(`已存檔「${filename}」，下次可用「開啟 JSON」續編`);
 }
 function loadJSON(inp){
   const f=inp.files[0]; if(!f) return;
+  lastFileName=f.name.replace(/\.json$/i,'');   // 再存檔時預設沿用原檔名
   const r=new FileReader();
   r.onload=()=>{ try{
     const d=JSON.parse(r.result);
@@ -3164,7 +3212,8 @@ const LAYOUTS={
 };
 /* 影片裡的標題列：要和網站真實標題列一致（改網站按鈕時記得一起改這裡） */
 const HDR=[['new','＋ 建立新圖'],['tpl','範本 ▾'],['draft','暫存 ▾'],['json','存檔 JSON'],['open','開啟 JSON'],['dl','下載 ▾',1]];
-const DLI=[['pptx','PPTX（可編輯）'],['word','Word'],['png','PNG 圖片'],['svg','SVG 向量圖']];
+const DLI=[['pptx','PPTX（可編輯）','每個人物、線條都是原生圖形，最推薦'],['word','Word','直接放進個案紀錄'],
+  ['png','PNG 圖片','勾「透明背景」可疊在文字上'],['svg','SVG 向量圖','Word「轉換成圖形」後可逐一編修']];
 
 /* ---------- 場景：每一幀都由時間 t 決定（可任意拖曳進度） ---------- */
 function mkScene(svg,L){
@@ -3300,7 +3349,7 @@ function Geno(S,g){
       stroke:'#fff','stroke-width':4,'paint-order':'stroke','stroke-linejoin':'round'},w,o.label||'');
     S.fn(t=>{ if(o.labelFn) lab.textContent=o.labelFn(t);
       /* 有婚姻線從下方拉出的人，名字移到左下，避免被線穿過 */
-      if(o.spouse){lab.setAttribute('x',-SZ-6);lab.setAttribute('y',SZ-4);lab.setAttribute('text-anchor','end');} });
+    });
     S.fn(t=>{
       const p=api.pos(id,t); let op=1,k=1;
       if(o.in!=null){const q=clamp((t-o.in)/.45); op=ease(q); k=lerp(.35,1,back(q));}
@@ -3329,18 +3378,18 @@ function Geno(S,g){
     return el;
   };
   const bot=(p)=>p.y+SZ, top=(p)=>p.y-SZ;
+  /* 與網站畫法一致：夫妻之間在符號中線拉橫線，子女線從橫線中點往下 */
+  const mid=(A,B)=>({l:Math.min(A.x,B.x)+SZ,r:Math.max(A.x,B.x)-SZ,y:(A.y+B.y)/2,m:(A.x+B.x)/2});
   api.union=(a,b,o={})=>{
-    P[a].spouse=P[b].spouse=true;
-    const d=t=>{const A=api.pos(a,t),B=api.pos(b,t),uy=Math.max(A.y,B.y)+SZ+32;
-      return `M${A.x},${bot(A)} V${uy} H${B.x} V${bot(B)}`;};
+    const d=t=>{const k=mid(api.pos(a,t),api.pos(b,t)); return `M${k.l},${k.y} H${k.r}`;};
     api.path(d,o);
-    if(o.divorced) api.path(t=>{const A=api.pos(a,t),B=api.pos(b,t),uy=Math.max(A.y,B.y)+SZ+32,m=(A.x+B.x)/2;
-      return `M${m-14},${uy+11} L${m-4},${uy-11} M${m+4},${uy+11} L${m+14},${uy-11}`;},
+    if(o.divorced) api.path(t=>{const k=mid(api.pos(a,t),api.pos(b,t));
+      return `M${k.m-12},${k.y+11} L${k.m-2},${k.y-11} M${k.m+2},${k.y+11} L${k.m+12},${k.y-11}`;},
       {in:o.draw?o.draw[1]:o.in,out:o.out,sw:2.2});
   };
   api.child=(a,b,c,o={})=>{
-    api.path(t=>{const A=api.pos(a,t),B=api.pos(b,t),K=api.pos(c,t),uy=Math.max(A.y,B.y)+SZ+32,m=(A.x+B.x)/2,sy=top(K)-30;
-      return `M${m},${uy} V${sy} H${K.x} V${top(K)}`;},o);
+    api.path(t=>{const k=mid(api.pos(a,t),api.pos(b,t)),K=api.pos(c,t),sy=top(K)-34;
+      return `M${k.m},${k.y} V${sy} H${K.x} V${top(K)}`;},o);
   };
   /* 情感關係 */
   api.tie=(a,b,type,o={})=>{
@@ -3399,6 +3448,8 @@ function chrome(S,o={}){
   const fs=L.k==='d'?22:34;
   const title=E('text',{x:L.k==='d'?28:34,y:hdrH/2,'font-size':fs,'font-weight':700,fill:'#fff','dominant-baseline':'central','font-family':FONT},R);
   E('tspan',{},title,'家系圖 ');E('tspan',{fill:C.amber},title,'×');E('tspan',{},title,' 生態圖 繪製工具');
+  if(L.k==='d'){ E('rect',{x:300,y:20,width:150,height:24,rx:12,fill:'none',stroke:'#35606a'},R);
+    E('text',{x:375,y:32,'font-size':12,fill:'#b9cfd3','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,'台灣社工符號規範'); }
   S.hpos={};
   if(L.k==='d'){
     let x=L.W-20;
@@ -3411,14 +3462,14 @@ function chrome(S,o={}){
     { const l='▶ 教學影片', w=tw(l,14)+24; x-=w;
       E('rect',{x,y:15,width:w,height:34,rx:6,fill:'transparent',stroke:C.amber},R);
       E('text',{x:x+w/2,y:32,'font-size':14,fill:'#ffe2b0','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,l); }
-    S.dlBox={x:S.hpos.dl.x+44-300,y:56,w:300,ih:46,fs:15};
-    DLI.forEach(([k],i)=>{S.hpos[k]={x:S.dlBox.x+150,y:S.dlBox.y+42+i*46};});
+    S.dlBox={x:S.hpos.dl.x+44-330,y:56,w:330,ih:54,fs:15};
+    DLI.forEach(([k],i)=>{S.hpos[k]={x:S.dlBox.x+150,y:S.dlBox.y+50+i*54};});
     /* 左側面板與工具列 */
     E('rect',{x:0,y:hdrH,width:660,height:L.H-hdrH,fill:'#fff'},R);
     E('line',{x1:660,y1:hdrH,x2:660,y2:L.H,stroke:C.line},R);
     E('rect',{x:661,y:hdrH,width:L.W-661,height:L.H-hdrH,fill:'url(#tutGrid)'},R);
     const tb=E('text',{x:690,y:hdrH+22,'font-size':15,fill:C.muted,'dominant-baseline':'central','font-family':FONT},R,
-      '↶ 復原　↷ 取消復原　│　重新自動排版　☑ 長幼排序　☐ 附圖例　☐ 彩色標示');
+      '↶ 復原　↷ 取消復原　│　重新自動排版　☑ 長幼排序　☐ 附圖例　☐ 彩色標示　☐ 透明背景');
     E('text',{x:L.W-24,y:hdrH+22,'font-size':15,fill:C.muted,'text-anchor':'end','dominant-baseline':'central','font-family':FONT},R,'檢視 － 100% ＋ 符合');
   } else {
     E('rect',{x:600,y:26,width:126,height:48,rx:8,fill:'transparent',stroke:C.amber},R);
@@ -3427,8 +3478,8 @@ function chrome(S,o={}){
     E('text',{x:807,y:50,'font-size':24,fill:'#e8f2f3','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,'☰ 選單');
     S.hpos.menu={x:807,y:50};
     HDR.forEach(([k],i)=>{S.hpos[k]={x:710,y:136+i*64};});
-    S.dlBox={x:500,y:136+HDR.length*64-8,w:380,ih:64,fs:23};
-    DLI.forEach(([k],i)=>{S.hpos[k]={x:S.dlBox.x+190,y:S.dlBox.y+52+i*64};});
+    S.dlBox={x:440,y:136+HDR.length*64-8,w:440,ih:76,fs:23};
+    DLI.forEach(([k],i)=>{S.hpos[k]={x:S.dlBox.x+190,y:S.dlBox.y+60+i*76};});
     E('rect',{x:0,y:hdrH,width:L.W,height:L.H-hdrH,fill:'url(#tutGrid)'},R);
     E('rect',{x:24,y:hdrH+10,width:852,height:730,rx:16,fill:'#fff',stroke:C.line},R);
     E('text',{x:50,y:860,'font-size':24,fill:C.teal,'font-weight':700,'dominant-baseline':'central','font-family':FONT},R,'◫ 看圖（手機版用底部按鈕切換）');
@@ -3450,11 +3501,12 @@ function menus(S){
   mobileMenu(S);
   if(!S.dlm.length) return;
   const b=S.dlBox, g=E('g',{},S.gTop);
-  E('rect',{x:b.x,y:b.y,width:b.w,height:DLI.length*b.ih+40,rx:12,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},g);
+  E('rect',{x:b.x,y:b.y,width:b.w,height:DLI.length*b.ih+44,rx:12,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},g);
   E('text',{x:b.x+16,y:b.y+18,'font-size':b.fs*.75,fill:C.muted,'dominant-baseline':'central','font-family':FONT},g,'選擇檔案格式');
-  DLI.forEach(([k,l],i)=>{const y=S.hpos[k].y;
+  DLI.forEach(([k,l,d],i)=>{const y=S.hpos[k].y;
     if(i===0) E('rect',{x:b.x+8,y:y-b.ih/2+3,width:b.w-16,height:b.ih-6,rx:6,fill:C.tealSoft},g);
-    E('text',{x:b.x+20,y,'font-size':b.fs,'font-weight':700,fill:C.ink,'dominant-baseline':'central','font-family':FONT},g,l);});
+    E('text',{x:b.x+20,y:y-b.fs*.45,'font-size':b.fs,'font-weight':700,fill:C.ink,'dominant-baseline':'central','font-family':FONT},g,l);
+    E('text',{x:b.x+20,y:y+b.fs*.6,'font-size':b.fs*.75,fill:C.muted,'dominant-baseline':'central','font-family':FONT},g,d);});
   S.fn(t=>show(g,S.dlm.some(([a,c])=>t>=a&&t<c)?1:0));
 }
 function mobileMenu(S){
@@ -3513,56 +3565,78 @@ const CH=[];
 /* ---------- 1. 快速上手 ---------- */
 CH.push({title:'快速上手',sub:'填表格，圖自己長出來',dur:25,
   caps:[[0,'第一張家系圖：只要填表格，圖會自己長出來'],
-    [1.8,'按「＋ 新增成員」→ 填稱謂、選性別、填年齡'],
+    [1.8,'按「＋ 新增成員」→ 填姓名或稱謂、選性別、填年齡'],
     [10,'勾選「案主」→ 圖上自動以灰底標示'],
-    [12.4,'到「婚姻／伴侶關係」→ 新增關係，選兩位成員與關係類型'],
-    [16.3,'在「子女」點選孩子，線條自動連好；出生序由長到幼排列'],
+    [11.8,'點區塊標題可收合；到「婚姻／伴侶關係」按「＋ 新增關係」'],
+    [13.8,'第一行選兩位成員，第二行選關係類型（結婚、離婚、同居…）'],
+    [16.3,'在「子女（點選加入）」點孩子，線條自動連好；可改親生／收養／寄養'],
     [20.6,{d:'不用拖拉排版——資料改了，圖就跟著更新',m:'手機版：底部「✎ 編輯資料／◫ 看圖」切換畫面'}]],
   build(S){
     const u=UI(S.gForm), G=Geno(S,zoomG(S));
     u.tabs(S,null); u.pills(S,54,['表格','關係矩陣','貼逐字稿'],[[0,0]]);
     const add=[2.4,4.5,6.6,8.4], ppl=[['父','男',45,'F'],['母','女',43,'M'],['小明','男',12,'K'],['妹','女',9,'S']];
     const cnt=t=>add.filter(a=>t>=a+.1).length;
-    /* 成員區（12.2 秒後收合） */
+    /* 成員區（11.9 秒點標題收合） */
     const mem=E('g',{},S.gForm);
-    u.sec(S,108,'成員',cnt,true,{p:mem,openFn:t=>t<12.2});
-    const cardsG=E('g',{},mem); S.vis(cardsG,null,12.0);
-    const cy=i=>132+i*82;
+    u.sec(S,108,'成員',cnt,true,{p:mem,openFn:t=>t<12.0});
+    const cardsG=E('g',{},mem); S.vis(cardsG,null,12.0,{fade:.2});
+    const em=u.text(26,146,'尚未建立成員',{p:cardsG,fs:13,fill:C.muted}); S.fn(t=>show(em,t<add[0]+.1?1:0));
+    const cy=i=>132+i*116;
     ppl.forEach(([n,sx,age,id],i)=>{
       const c=E('g',{},cardsG); S.vis(c,add[i]+.1,null,{dy:-10});
-      u.rect(14,cy(i),492,74,{p:c,fill:C.card,stroke:'#e6e1d8',rx:8});
-      E('circle',{cx:32,cy:cy(i)+23,r:11,fill:C.orange},c);
-      u.text(32,cy(i)+23,String(i+1),{p:c,anchor:'middle',fs:12,fw:700,fill:'#fff'});
-      const nf=u.field(52,cy(i)+8,170,'',{p:c}); S.type(nf.t,n,add[i]+.55,add[i]+.85,nf.box);
+      u.rect(14,cy(i),492,108,{p:c,fill:C.card,stroke:'#e6e1d8',rx:8});
+      u.text(32,cy(i)+7,'▲',{p:c,anchor:'middle',fs:7,fill:'#b3bcb9'}); u.text(32,cy(i)+39,'▼',{p:c,anchor:'middle',fs:7,fill:'#b3bcb9'});
+      E('circle',{cx:32,cy:cy(i)+23,r:10,fill:C.teal},c);
+      u.text(32,cy(i)+23,String(i+1),{p:c,anchor:'middle',fs:11,fw:700,fill:'#fff'});
+      const nf=u.field(52,cy(i)+8,170,'',{p:c,ph:'姓名或稱謂'}); S.type(nf.t,n,add[i]+.55,add[i]+.85,nf.box);
+      S.fn(t=>show(nf.ph,t<add[i]+.55?1:0));
       const sf=u.select(232,cy(i)+8,110,'男',{p:c}); S.val(sf.t,[[0,'男'],[add[i]+1.05,sx]]);
-      const af=u.field(352,cy(i)+8,74,'',{p:c}); S.type(af.t,String(age),add[i]+1.3,add[i]+1.5,af.box);
+      const af=u.field(352,cy(i)+8,74,'',{p:c,ph:'歲數'}); S.type(af.t,String(age),add[i]+1.3,add[i]+1.5,af.box);
+      S.fn(t=>show(af.ph,t<add[i]+1.3?1:0));
       u.text(488,cy(i)+23,'✕',{p:c,fs:15,fill:'#c25a3c',anchor:'middle'});
-      const k1=u.check(52,cy(i)+56,'案主',{p:c}); u.check(122,cy(i)+56,'已故',{p:c}); u.check(192,cy(i)+56,'身障／慢性病',{p:c});
+      const k1=u.check(52,cy(i)+54,'案主',{p:c,fs:12}); u.check(112,cy(i)+54,'已故',{p:c,fs:12});
+      u.check(172,cy(i)+54,'身障／慢性病',{p:c,fs:12}); u.check(284,cy(i)+54,'身分不詳（虛線框）',{p:c,fs:12});
+      u.field(52,cy(i)+70,454-8,'',{p:c,h:28,fs:12,ph:'註記（例：冠心病、失智、住院中）'});
       if(id==='K') S.fn(t=>k1.set(t>=10.6));
       /* 游標 */
       S.clickF(add[i]+.5,120,cy(i)+23); S.clickF(add[i]+1.2,385,cy(i)+23);
       if(sx==='女') S.clickF(add[i]+.98,287,cy(i)+23);
     });
     const ab=u.btn(14,0,'＋ 新增成員',{p:cardsG});
-    S.fn(t=>ab.setAttribute('transform',`translate(0,${cy(cnt(t))+4})`));
-    add.forEach((a,i)=>S.clickF(a,ab.cx,cy(i)+18));
-    S.clickF(10.5,60,cy(2)+56);
+    S.fn(t=>ab.setAttribute('transform',`translate(0,${cnt(t)?cy(cnt(t))+4:162})`));
+    add.forEach((a,i)=>S.clickF(a,ab.cx,(i?cy(i)+18:176)));
+    S.clickF(10.5,60,cy(2)+54);
+    S.clickF(11.8,70,108);   // 點「成員」標題收合
     /* 婚姻區 */
-    const uni=E('g',{},S.gForm); S.vis(uni,12.3,null,{dy:16});
+    const uni=E('g',{},S.gForm); S.vis(uni,12.1,null,{dy:16});
     const ty=176;
     u.sec(S,142,'婚姻／伴侶關係',t=>t>=13.3?1:0,true,{p:uni});
+    const ue=u.text(26,ty+14,'尚未建立婚姻／伴侶關係',{p:uni,fs:13,fill:C.muted}); S.fn(t=>show(ue,t<13.3?1:0));
     const card=E('g',{},uni); S.vis(card,13.3,null,{dy:-8});
-    u.rect(14,ty,492,124,{p:card,fill:C.card,stroke:'#e6e1d8',rx:8});
-    const sa=u.select(26,ty+12,120,'— 選成員 —',{p:card}); S.val(sa.t,[[0,'— 選成員 —'],[14.1,'父']]);
-    u.select(156,ty+12,150,'結婚',{p:card});
-    const sb=u.select(316,ty+12,120,'— 選成員 —',{p:card}); S.val(sb.t,[[0,'— 選成員 —'],[14.8,'母']]);
+    const kidH=t=>(t>=17.0?34:0)+(t>=18.4?34:0), cardH=t=>178+kidH(t);
+    const crect=u.rect(14,ty,492,178,{p:card,fill:C.card,stroke:'#e6e1d8',rx:8});
+    S.fn(t=>crect.setAttribute('height',cardH(t)));
+    E('circle',{cx:30,cy:ty+27,r:10,fill:C.teal},card); u.text(30,ty+27,'1',{p:card,anchor:'middle',fs:11,fw:700,fill:'#fff'});
+    /* 與網站相同：兩位成員在第一行，關係類型在第二行 */
+    const sa=u.select(46,ty+12,204,'— 選成員 —',{p:card}); S.val(sa.t,[[0,'— 選成員 —'],[14.1,'父']]);
+    const sb=u.select(258,ty+12,204,'— 選成員 —',{p:card}); S.val(sb.t,[[0,'— 選成員 —'],[14.8,'母']]);
     u.text(488,ty+27,'✕',{p:card,fs:15,fill:'#c25a3c',anchor:'middle'});
-    u.text(26,ty+64,'子女（點選加入）',{p:card,fs:13,fill:C.muted});
-    const c1=u.chip(26,ty+82,'小明',{p:card}), c2=u.chip(26+c1.w+8,ty+82,'妹',{p:card});
+    u.select(26,ty+48,462,'結婚',{p:card});
+    const wn=u.text(26,ty+92,'↑ 請在兩側各選一位（不同）成員，連線才會出現',{p:card,fs:12,fill:'#c0392b'});
+    S.fn(t=>show(wn,t<14.85?1:0));
+    u.text(26,ty+118,'子女（點選加入）',{p:card,fs:13,fill:C.muted});
+    const c1=u.chip(140,ty+105,'小明',{p:card}), c2=u.chip(140+c1.w+8,ty+105,'妹',{p:card});
     S.fn(t=>{c1.set(t>=17.0);c2.set(t>=18.4);});
-    const ub=u.btn(14,ty+136,'＋ 新增關係',{p:uni}); S.fn(t=>ub.setAttribute('transform',`translate(0,${t<13.3?-136:0})`));
-    S.clickF(13.2,ub.cx,ty+14); // 尚未有卡片時，按鈕在卡片位置
-    S.clickF(14.0,86,ty+27); S.clickF(14.7,376,ty+27);
+    [['小明',17.0,0],['妹',18.4,1]].forEach(([n,tk,j])=>{
+      const k=E('g',{},card); S.vis(k,tk,null,{dy:-6});
+      u.text(40,ty+162+j*34,n,{p:k,fs:13,fill:C.ink});
+      u.select(110,ty+149+j*34,96,'親生',{p:k,h:26,fs:12});
+      if(j) u.check(222,ty+162+j*34,'與上一位多胞胎',{p:k,fs:12});
+    });
+    const ub=u.btn(14,0,'＋ 新增關係',{p:uni});
+    S.fn(t=>ub.setAttribute('transform',`translate(0,${t<13.3?ty+30:ty+cardH(t)+12})`));
+    S.clickF(13.2,ub.cx,ty+44);
+    S.clickF(14.0,148,ty+27); S.clickF(14.7,360,ty+27);
     S.clickF(16.9,c1.cx,c1.cy); S.clickF(18.3,c2.cx,c2.cy);
     /* 畫布 */
     G.person('F',{x:300,y:130,sex:'m',label:'父',age:45,in:add[0]+.7});
@@ -3573,61 +3647,70 @@ CH.push({title:'快速上手',sub:'填表格，圖自己長出來',dur:25,
     G.child('F','M','K',{draw:[17.1,17.8]}); G.child('F','M','S',{draw:[18.5,19.2]});
     S.go(20.4,S.Cv(560,250)); S.go(24,S.Cv(580,260));
   },
-  tryIt(){ prepGeno(); coach('[onclick="addPerson()"]','從這裡開始：按「＋ 新增成員」，填稱謂、性別、年齡'); }
+  tryIt(){ prepGeno(); coach('[onclick="addPerson()"]','從這裡開始：按「＋ 新增成員」，填姓名或稱謂、性別、年齡'); }
 });
 
 /* ---------- 2. 情感關係與生活圈 ---------- */
 CH.push({title:'情感關係 × 生活圈',sub:'標出家庭動力與同住成員',dur:24,
   caps:[[0,'接著標出家庭動力：情感關係與生活圈'],
-    [1.8,'「＋ 新增情感連結」→ 選兩位成員與關係類型（衝突、親密、疏遠…）'],
+    [1.8,'「＋ 新增情感連結」→ 兩側選成員，中間選關係類型（預設為正向親密）'],
     [6.8,'正向親密＝粗線；衝突＝鋸齒線，一眼看出張力在哪'],
-    [10.6,'「生活圈」：點選同住或關係密切的成員，自動圈起來'],
-    [15.6,'拖曳成員時，生活圈會跟著變形'],
-    [19.4,'長輩在兩家輪住？勾「虛線」表示部分時間同住']],
+    [10.6,'「＋ 新增生活圈」：在「圈內成員」點選同住或關係密切的人'],
+    [15.6,'拖曳成員時，生活圈會跟著變形；「圈的鬆緊」可調整貼合程度'],
+    [19.4,'長輩在兩家輪住？勾「虛線（輪住／部分時間同住）」']],
   build(S){
-    const u=UI(S.gForm), G=Geno(S,zoomG(S));
+    const u=UI(S.gForm), zg2=zoomG(S), G=Geno(S,zg2);
     u.tabs(S,null); u.pills(S,54,['表格','關係矩陣','貼逐字稿'],[[0,0]]);
     collapsedSecs(S,u,[['成員',4],['婚姻／伴侶關係',1]],S.gForm);
     /* 情感區 */
     const tieSec=E('g',{},S.gForm); S.vis(tieSec,null,10.4);
     u.sec(S,168,'情感關係',t=>(t>=2.1?1:0)+(t>=7.1?1:0),true,{p:tieSec});
+    const te=u.text(26,206,'尚未建立情感連結',{p:tieSec,fs:13,fill:C.muted}); S.fn(t=>show(te,t<2.1?1:0));
     const types=['正向關係','正向親密','過度親密','衝突','衝突又親密','關係惡化','溝通中斷','疏遠'];
     const mk=(y,a,ty,b,tin,ta,tt,tb)=>{
       const c=E('g',{},tieSec); S.vis(c,tin,null,{dy:-8});
-      u.rect(14,y,492,48,{p:c,fill:C.card,stroke:'#e6e1d8',rx:8});
-      const s1=u.select(26,y+9,110,'— 成員 —',{p:c}); S.val(s1.t,[[0,'— 成員 —'],[ta,a]]);
-      const s2=u.select(146,y+9,150,'— 類型 —',{p:c}); S.val(s2.t,[[0,'— 類型 —'],[tt,ty]]);
-      const s3=u.select(306,y+9,110,'— 成員 —',{p:c}); S.val(s3.t,[[0,'— 成員 —'],[tb,b]]);
+      u.rect(14,y,492,64,{p:c,fill:C.card,stroke:'#e6e1d8',rx:8});
+      const s1=u.select(26,y+9,116,'— 選成員 —',{p:c}); S.val(s1.t,[[0,'— 選成員 —'],[ta,a]]);
+      const s2=u.select(150,y+9,150,'正向親密',{p:c}); if(tt!=null) S.val(s2.t,[[0,'正向親密'],[tt,ty]]);
+      const s3=u.select(308,y+9,116,'— 選成員 —',{p:c}); S.val(s3.t,[[0,'— 選成員 —'],[tb,b]]);
       u.text(488,y+24,'✕',{p:c,fs:15,fill:'#c25a3c',anchor:'middle'});
+      const w=u.text(26,y+52,'↑ 請在兩側各選一位（不同）成員，連線才會出現',{p:c,fs:12,fill:'#c0392b'});
+      S.fn(t=>show(w,t<Math.max(ta,tb)+.05?1:0));
     };
     mk(192,'父','衝突','小明',2.1,2.7,4.8,3.3);
-    mk(248,'母','正向親密','妹',7.1,7.5,8.3,7.9);
+    mk(264,'母','正向親密','妹',7.1,7.6,null,8.2);
     const tb=u.btn(14,0,'＋ 新增情感連結',{p:tieSec});
-    S.fn(t=>tb.setAttribute('transform',`translate(0,${t<2.1?192:t<7.1?248:304})`));
-    S.clickF(2.0,tb.cx,206); S.clickF(2.6,80,216); S.clickF(3.2,360,216); S.clickF(3.9,220,216);
+    S.fn(t=>tb.setAttribute('transform',`translate(0,${t<2.1?220:t<7.1?264:336})`));
+    S.clickF(2.0,tb.cx,234); S.clickF(2.6,84,216); S.clickF(3.2,366,216); S.clickF(3.9,225,216);
     /* 下拉選單 */
     const dd=E('g',{},S.gForm); S.fn(t=>show(dd,t>=4.0&&t<4.9?1:0));
-    u.rect(146,232,150,types.length*26+8,{p:dd,fill:'#fff',stroke:C.line,a:{filter:'url(#tutShadow)'}});
-    const hl=u.rect(150,236,142,24,{p:dd,fill:C.tealSoft,stroke:'none',rx:4});
-    types.forEach((ty,i)=>u.text(158,248+i*26,ty,{p:dd,fs:13}));
-    S.fn(t=>hl.setAttribute('y',236+Math.round(lerp(0,3,clamp((t-4.1)/.6)))*26));
-    S.clickF(4.8,200,248+3*26);
-    S.clickF(7.4,80,272); S.clickF(7.9,360,272); S.clickF(8.3,220,272);
+    u.rect(150,232,150,types.length*26+8,{p:dd,fill:'#fff',stroke:C.line,a:{filter:'url(#tutShadow)'}});
+    const hl=u.rect(154,236,142,24,{p:dd,fill:C.tealSoft,stroke:'none',rx:4});
+    types.forEach((ty,i)=>u.text(162,248+i*26,ty,{p:dd,fs:13}));
+    S.fn(t=>hl.setAttribute('y',236+Math.round(lerp(1,3,clamp((t-4.1)/.6)))*26));
+    S.clickF(4.8,205,248+3*26);
+    S.clickF(7.5,84,288); S.clickF(8.1,366,288);
     /* 生活圈區 */
     const cir=E('g',{},S.gForm); S.vis(cir,10.5,null,{dy:14});
     u.sec(S,168,'情感關係',2,false,{p:cir});
     u.sec(S,202,'生活圈（同住／關係密切）',t=>t>=11.4?1:0,true,{p:cir});
+    const ce=u.text(26,240,'尚未建立生活圈',{p:cir,fs:13,fill:C.muted}); S.fn(t=>show(ce,t<11.4?1:0));
     const cc=E('g',{},cir); S.vis(cc,11.4,null,{dy:-8});
-    u.rect(14,226,492,124,{p:cc,fill:C.card,stroke:'#e6e1d8',rx:8});
-    u.text(26,248,'生活圈 1',{p:cc,fs:14,fw:700,fill:C.ink});
-    const dsh=u.check(120,248,'虛線（輪住／部分時間同住）',{p:cc});
+    const Y=226;
+    u.rect(14,Y,492,190,{p:cc,fill:C.card,stroke:'#e6e1d8',rx:8});
+    u.field(26,Y+10,446,'同住',{p:cc,h:30}); u.text(488,Y+25,'✕',{p:cc,fs:15,fill:'#c25a3c',anchor:'middle'});
+    const dsh=u.check(26,Y+58,'虛線（輪住／部分時間同住）',{p:cc,fs:12.5});
     S.fn(t=>dsh.set(t>=20.3));
-    u.text(26,282,'圈內成員',{p:cc,fs:13,fill:C.muted});
-    let x=26; const chips=['父','母','小明','妹'].map(n=>{const c=u.chip(x,300,n,{p:cc}); x+=c.w+8; return c;});
+    u.btn(26,Y+74,'✎ 手動微調形狀',{p:cc,h:24,fs:12,fw:400});
+    u.text(26,Y+120,'圈的鬆緊',{p:cc,fs:12.5,fill:C.text});
+    u.rect(92,Y+117,330,6,{p:cc,rx:3,fill:'#d9d4cb',stroke:'none'});
+    E('circle',{cx:240,cy:Y+120,r:8,fill:C.teal},cc); u.text(440,Y+120,'100%',{p:cc,fs:12,fill:C.muted});
+    u.text(26,Y+146,'圈內成員',{p:cc,fs:12.5,fill:C.muted});
+    let x=26; const chips=['父','母','小明','妹'].map(n=>{const c=u.chip(x,Y+158,n,{p:cc}); x+=c.w+8; return c;});
     const jt={1:12.2,2:12.8,3:13.4};
     S.fn(t=>chips.forEach((c,i)=>c.set(jt[i]!=null&&t>=jt[i])));
-    const cb=u.btn(14,0,'＋ 新增生活圈',{p:cir}); S.fn(t=>cb.setAttribute('transform',`translate(0,${t<11.4?226:362})`));
-    S.clickF(11.3,cb.cx,240);
+    const cb=u.btn(14,0,'＋ 新增生活圈',{p:cir}); S.fn(t=>cb.setAttribute('transform',`translate(0,${t<11.4?254:Y+202})`));
+    S.clickF(11.3,cb.cx,268);
     [1,2,3].forEach(i=>S.clickF(jt[i]-.1,chips[i].cx,chips[i].cy));
     S.clickF(20.2,dsh.cx,dsh.cy);
     /* 畫布 */
@@ -3636,6 +3719,8 @@ CH.push({title:'情感關係 × 生活圈',sub:'標出家庭動力與同住成�
     G.tie('F','K','conflict',{draw:[5.0,5.8]});
     G.tie('M','S','close',{draw:[8.5,9.2]});
     G.blob(['M','K','S'],{joins:[-1,12.9,13.5],in:12.3,dash:t=>t>=20.4?'9 7':null});
+    const lab=E('text',{x:440,y:470,'text-anchor':'middle','font-size':15,fill:C.muted,'font-family':FONT},zg2,'同住');
+    S.vis(lab,13.6);
     S.go(15.6,S.Gz(460,345)); S.go(16.4,S.Gz(460,345),{press:1});
     S.go(17.6,S.Gz(530,367),{press:1,dur:1.2}); S.go(18.0,S.Gz(530,367));
   },
@@ -3643,16 +3728,19 @@ CH.push({title:'情感關係 × 生活圈',sub:'標出家庭動力與同住成�
 });
 
 /* ---------- 3. 範本與逐字稿 ---------- */
-const TPL=[['h','基本家庭結構'],['完整示範案例（三代＋情感＋生活圈）'],['核心家庭：夫妻＋子女'],['三代同堂'],['單親（離婚）：母親帶子女'],
-  ['h','長照／老人常見'],['獨居長者：子女在外地'],['老老照顧：老夫妻相互照顧'],['輪住照顧：長輩在兩家輪住'],
-  ['h','兒少與家庭'],['隔代教養：祖父母帶孫'],['新住民家庭'],['寄養／安置']];
+/* 範本選單：文字與網站「範本 ▾」一致（節錄） */
+const TPL=[['h','基本家庭結構（載入後可直接改）'],['完整示範案例（三代 + 情感 + 生活圈 + 生態圖）'],['核心家庭：夫妻 + 子女'],['三代同堂：案父母 + 案主夫妻 + 子女'],['單親（離婚）：母親帶子女'],
+  ['h','長照／老人常見'],['獨居長者：子女在外地，鄰里與居服支持'],['老老照顧：老夫妻相互照顧，子女未同住'],['輪住照顧：長輩在兩個子女家輪流住'],
+  ['h','兒少與家庭'],['隔代教養：祖父母帶孫（父母離婚未同住）'],['新住民家庭：跨國婚姻 + 夫家父母同住'],['寄養／安置：原生家庭 + 寄養家庭'],
+  ['n','載入會清空目前畫面。想保留請先「存檔 JSON」。']];
 CH.push({title:'範本 × 貼逐字稿',sub:'不用從零開始',dur:26,
   caps:[[0,'不想從零開始？兩種快速建圖法'],
     [1.6,'①「範本」內建 24 種常見家庭結構：長照、兒少、重組、新住民…'],
     [5.6,'載入後直接改名字、年齡，就是你的個案'],
     [10.4,'②「貼逐字稿」：把訪談紀錄或個案摘要貼進來'],
-    [15.6,'一鍵解析成員與關係，自動填進表格與圖面'],
-    [20.4,'文字只在你的瀏覽器處理、不會上傳；結果可再到表格確認修改']],
+    [15.0,'按「解析逐字稿」→ 先確認辨識到的成員與關係'],
+    [17.4,'沒問題就按「套用（清空後重建）」，表格與圖面一次建立'],
+    [21.0,'文字只在你的瀏覽器處理、不會上傳；結果可再到表格修改']],
   build(S){
     const L=S.L, u=UI(S.gForm), G=Geno(S,zoomG(S,1.12,280));
     u.tabs(S,null); u.pills(S,54,['表格','關係矩陣','貼逐字稿'],[[0,0],[11.0,2]]);
@@ -3661,31 +3749,33 @@ CH.push({title:'範本 × 貼逐字稿',sub:'不用從零開始',dur:26,
     /* 範本選單（全域座標） */
     S.hdr('tpl',2.6);
     const m=E('g',{},S.gTop); S.fn(t=>show(m,t>=2.75&&t<5.0?1:0));
-    const isD=L.k==='d', ih=isD?32:50, fs=isD?14:22, mw=isD?440:800;
+    const isD=L.k==='d', ih=isD?32:50, fs=isD?14:22, mw=isD?470:800;
     const mx=isD?S.H('tpl').x-60:50, my=isD?58:110;
     E('rect',{x:mx,y:my,width:mw,height:TPL.length*ih+16,rx:12,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},m);
     let pk=0, hl=null;
     TPL.forEach((it,i)=>{
       const y=my+8+i*ih;
-      if(it[0]==='h') E('text',{x:mx+16,y:y+ih/2,'font-size':fs*.85,'font-weight':700,fill:C.teal,'dominant-baseline':'central','font-family':FONT},m,it[1]);
+      if(it[0]==='h') E('text',{x:mx+16,y:y+ih/2,'font-size':fs*.8,fill:C.muted,'dominant-baseline':'central','font-family':FONT},m,it[1]);
+      else if(it[0]==='n') E('text',{x:mx+16,y:y+ih/2,'font-size':fs*.75,fill:C.muted,'dominant-baseline':'central','font-family':FONT},m,it[1]);
       else{ if(it[0].startsWith('隔代')){pk=i;
           hl=E('rect',{x:mx+8,y,width:mw-16,height:ih,rx:6,fill:C.tealSoft},m);}
         E('text',{x:mx+24,y:y+ih/2,'font-size':fs,fill:C.text,'dominant-baseline':'central','font-family':FONT},m,it[0]); }
     });
     S.fn(t=>show(hl,t>=4.2?1:0));
     const py=my+8+pk*ih+ih/2;
-    S.go(3.9,{x:mx+mw*.45,y:my+8+7*ih}); S.click(4.6,{x:mx+mw*.4,y:py});
+    S.go(3.9,{x:mx+mw*.45,y:my+8+7*ih}); S.click(4.6,{x:mx+mw*.35,y:py});
     /* 舊圖 → 隔代教養 */
     baseFamily(S,G,{out:4.8});
     const T0=5.2;
-    G.person('GF',{x:330,y:100,sex:'m',label:'祖父',age:68,in:T0,out:15.6});
-    G.person('GM',{x:490,y:100,sex:'f',label:'祖母',age:66,in:T0+.15,out:15.6});
-    G.person('D',{x:240,y:270,sex:'m',label:'父',age:40,in:T0+.3,out:15.6});
-    G.person('Mo',{x:560,y:270,sex:'f',label:'母',age:38,in:T0+.45,out:15.6});
-    G.person('C',{x:400,y:440,sex:'m',label:'小華',age:9,client:true,in:T0+.6,out:15.6});
-    G.union('GF','GM',{draw:[T0+.6,T0+1.1],out:15.6}); G.child('GF','GM','D',{draw:[T0+1.0,T0+1.5],out:15.6});
-    G.union('D','Mo',{draw:[T0+1.2,T0+1.7],divorced:1,out:15.6}); G.child('D','Mo','C',{draw:[T0+1.6,T0+2.1],out:15.6});
-    G.blob(['GF','GM','C'],{in:T0+2.2,out:15.6,r:46});
+    const OUT=18.2;
+    G.person('GF',{x:330,y:100,sex:'m',label:'祖父',age:70,in:T0,out:OUT});
+    G.person('GM',{x:490,y:100,sex:'f',label:'祖母',age:68,in:T0+.15,out:OUT});
+    G.person('D',{x:240,y:270,sex:'m',label:'案父',age:44,in:T0+.3,out:OUT});
+    G.person('Mo',{x:560,y:270,sex:'f',label:'案母',age:42,in:T0+.45,out:OUT});
+    G.person('C',{x:400,y:440,sex:'m',label:'案主',age:12,client:true,in:T0+.6,out:OUT});
+    G.union('GF','GM',{draw:[T0+.6,T0+1.1],out:OUT}); G.child('GF','GM','D',{draw:[T0+1.0,T0+1.5],out:OUT});
+    G.union('D','Mo',{draw:[T0+1.2,T0+1.7],divorced:1,out:OUT}); G.child('D','Mo','C',{draw:[T0+1.6,T0+2.1],out:OUT});
+    G.blob(['GF','GM','C'],{in:T0+2.2,out:OUT,r:46});
     S.go(8.5,S.Cv(600,420)); S.clickF(10.9,204,68);
     /* 貼逐字稿 */
     const ig=E('g',{},S.gForm); S.vis(ig,11.0);
@@ -3697,16 +3787,21 @@ CH.push({title:'範本 × 貼逐字稿',sub:'不用從零開始',dur:26,
     lines.forEach((ln,i)=>{const t0=11.8+acc/tot*3, t1=11.8+(acc+ln.length)/tot*3; acc+=ln.length;
       const te=u.text(26,166+i*28,'',{p:ig,fs:14}); S.type(te,ln,t0,t1,i===0?ta:null);});
     const pb=u.btn(14,306,'解析逐字稿',{p:ig,primary:1});
-    S.clickF(11.6,250,200); S.clickF(15.4,pb.cx,pb.cy);
-    const rs=E('g',{},ig); S.vis(rs,15.6);
-    u.rect(14,346,492,150,{p:rs,fill:'#f3f8f6',stroke:'#cfe3df',rx:8});
-    u.text(28,368,'找到 6 位成員、3 段關係（請確認）',{p:rs,fs:13.5,fw:700,fill:C.teal});
-    const found=['案主 35','案妻','長子 10','次子 8','案父 65','案母 62','衝突：案主—案父','離婚：案父—案母'];
-    let cx=28,cyy=390;
-    found.forEach((f,i)=>{const w=tw('✓ '+f,13)+22; if(cx+w>500){cx=28;cyy+=34;}
-      const c=E('g',{},rs); S.vis(c,15.8+i*.14);
-      u.rect(cx,cyy,w,26,{p:c,rx:13,fill:'#fff',stroke:'#cfe3df'}); u.text(cx+w/2,cyy+13,'✓ '+f,{p:c,fs:13,anchor:'middle',fill:C.ink}); cx+=w+8;});
-    const T1=16.0;
+    S.clickF(11.6,250,200); S.clickF(15.0,pb.cx,pb.cy);
+    const rs=E('g',{},ig); S.vis(rs,15.2);
+    u.rect(14,346,492,206,{p:rs,fill:'#fff',stroke:C.line,rx:8});
+    u.text(28,366,'辨識到 6 位成員',{p:rs,fs:13.5,fw:700,fill:C.ink});
+    const chipRow=(list,y0,t0)=>{let cx=28,cyy=y0;
+      list.forEach((f,i)=>{const w=tw(f,12)+20; if(cx+w>500){cx=28;cyy+=30;}
+        const c=E('g',{},rs); S.vis(c,t0+i*.1);
+        u.rect(cx,cyy,w,24,{p:c,rx:12,fill:C.tealSoft,stroke:'none'}); u.text(cx+w/2,cyy+12,f,{p:c,fs:12,anchor:'middle',fill:C.ink}); cx+=w+6;});
+      return cyy;};
+    const yy=chipRow(['案主 35歲（案主）','案妻 女','長子 男 10歲','次子 男 8歲','案父 男 65歲','案母 女 62歲'],380,15.3);
+    u.text(28,yy+46,'辨識到 3 組關係',{p:rs,fs:13.5,fw:700,fill:C.ink});
+    chipRow(['案主 — 結婚 — 案妻','案主 — 衝突 — 案父','案父 — 離婚 — 案母'],yy+60,15.9);
+    const ap=u.btn(28,512,'套用（清空後重建）',{p:rs,primary:1,h:30}); u.btn(28+ap.w+8,512,'併入現有資料',{p:rs,h:30,fw:400});
+    S.clickF(17.6,ap.cx,ap.cy);
+    const T1=18.4;
     G.person('A1',{x:300,y:100,sex:'m',label:'案父',age:65,in:T1});
     G.person('A2',{x:500,y:100,sex:'f',label:'案母',age:62,in:T1+.15});
     G.person('A3',{x:340,y:270,sex:'m',label:'案主',age:35,client:true,in:T1+.3});
@@ -3718,7 +3813,7 @@ CH.push({title:'範本 × 貼逐字稿',sub:'不用從零開始',dur:26,
     G.child('A3','A4','A5',{draw:[T1+1.6,T1+2.1]}); G.child('A3','A4','A6',{draw:[T1+1.7,T1+2.2]});
     G.tie('A3','A1','conflict',{draw:[T1+2.4,T1+3.0]});
     G.blob(['A2','A3','A4','A5','A6'],{in:T1+3.0,r:44});
-    S.go(19,S.Cv(640,200)); S.go(25,S.Cv(650,210));
+    S.go(21.5,S.Cv(640,200)); S.go(25,S.Cv(650,210));
   },
   tryIt(){
     if(isMob()){ openHdr(); coach('[onclick="toggleTplMenu(event)"]','按「範本 ▾」選一個最接近個案的家庭結構'); }
@@ -3726,14 +3821,14 @@ CH.push({title:'範本 × 貼逐字稿',sub:'不用從零開始',dur:26,
   }
 });
 
-/* ---------- 4. 生態圖 ---------- */
-CH.push({title:'生態圖',sub:'盤點正式與非正式資源',dur:25,
-  caps:[[0,'切到「生態圖」：盤點家庭與外部系統的連結'],
-    [2.8,'按「從家系圖帶入」→ 自動抓案主與同住成員當中心家庭'],
-    [4.6,'未同住的親屬（如父）自動列為外部系統'],
-    [6.8,'新增學校、社福中心、醫院…選強度與資源流向'],
-    [14.6,'線粗＝強度・虛線＝薄弱・鋸齒＝壓力／衝突・箭頭＝資源流向'],
-    [18.4,'「完整家系生態圖」：整張家系圖放中央，資源可連到特定成員']],
+/* ---------- 4. 生態圖（預設：自由網絡圖） ---------- */
+CH.push({title:'生態圖',sub:'盤點正式與非正式資源',dur:26,
+  caps:[[0,'切到「生態圖」：預設是「自由網絡圖」，整張家系圖放在中間'],
+    [3.0,'在「外部系統」按「＋ 新增系統」，輸入學校、社福中心、醫院…'],
+    [9.4,'新增的系統會自動連到案主，連線列在上方「連線（自由網絡圖）」'],
+    [11.4,'每條連線可改類型：強連結（雙線）、薄弱（虛線）、壓力／衝突（鋸齒）'],
+    [15.2,'也能加箭頭表示資源流向，並在線上寫事件或日期'],
+    [19.4,'人和單位都能拖曳擺放；想要傳統畫法，可切換「簡化：一個圓」']],
   build(S){
     const u=UI(S.gForm);
     u.tabs(S,2.4);
@@ -3742,66 +3837,134 @@ CH.push({title:'生態圖',sub:'盤點正式與非正式資源',dur:25,
     collapsedSecs(S,u,[['成員',4],['婚姻／伴侶關係',1],['情感關係',2],['生活圈（同住／關係密切）',1]],gg);
     S.clickF(2.3,390,22);
     const eg=E('g',{},S.gForm); S.vis(eg,2.5,null,{fade:.2});
-    u.pills(S,54,['簡化：一個圓','完整家系生態圖','自由網絡圖'],[[0,0],[18.9,1]],{p:eg});
-    u.sec(S,108,'中心家庭','',true,{p:eg});
-    const f1=u.field(14,128,492,'',{p:eg,ph:'例：王小明家庭'}), f2=u.field(14,164,492,'',{p:eg,ph:'成員，用頓號分隔'});
-    S.fn(t=>{show(f1.ph,t<3.7?1:0);show(f2.ph,t<3.7?1:0);});
-    S.val(f1.t,[[0,''],[3.7,'小明家庭']]); S.val(f2.t,[[0,''],[3.7,'小明、母、妹']]);
-    const ib=u.btn(14,202,'↙ 從家系圖帶入中心家庭',{p:eg}); S.clickF(3.5,ib.cx,ib.cy);
-    u.sec(S,258,'外部系統',t=>(t>=4.6?1:0)+(t>=7.1?1:0)+(t>=9.7?1:0)+(t>=12.5?1:0),true,{p:eg});
-    const sys=[['父（未同住）','壓力／衝突','—',4.6],['學校','強','—',7.1],['社福中心','一般','→ 家庭',9.7],['醫院','薄弱','—',12.5]];
-    sys.forEach(([n,s,f,ti],i)=>{
-      const y=280+i*46, c=E('g',{},eg); S.vis(c,ti,null,{dy:-8});
-      u.rect(14,y,492,40,{p:c,fill:C.card,stroke:'#e6e1d8',rx:8});
-      const nf=u.field(24,y+5,170,'',{p:c,h:30});
-      if(i===0) S.val(nf.t,[[0,n]]); else S.type(nf.t,n,ti+.3,ti+.6,nf.box);
-      const sf=u.select(204,y+5,130,'一般',{p:c}); S.val(sf.t,[[0,'一般'],[i===0?0:ti+.9,s]]);
-      const ff=u.select(344,y+5,110,'—',{p:c}); S.val(ff.t,[[0,'—'],[ti+1.1,f]]);
-      u.text(486,y+20,'✕',{p:c,fs:15,fill:'#c25a3c',anchor:'middle'});
-      if(i>0){ S.clickF(ti-.1,70,y-26); S.clickF(ti+.85,270,y+20); if(f!=='—') S.clickF(ti+1.1,400,y+20); }
+    u.pills(S,54,['簡化：一個圓','完整家系生態圖','自由網絡圖'],[[0,2],[20.6,0]],{p:eg});
+    const h1=u.text(14,98,'「自由網絡圖」：人與單位都可自由拖曳擺放，任兩者之間都能拉線、',{p:eg,fs:12,fill:'#41504e'});
+    const h2=u.text(14,116,'寫事件，適合保護性個案這類多單位、多事件的情境。',{p:eg,fs:12,fill:'#41504e'});
+    S.fn(t=>{const sm=t>=20.6; h1.textContent=sm?'「簡化」把家庭畫成一個圓，外部系統環繞；最常見的生態圖形式。':'「自由網絡圖」：人與單位都可自由拖曳擺放，任兩者之間都能拉線、'; show(h2,sm?0:1);});
+    /* 可捲動的內容：連線區 + 外部系統區 */
+    const clp=E('clipPath',{id:'tutEcoClip'},S.defs); E('rect',{x:0,y:134,width:520,height:3000},clp);
+    const scw=E('g',{'clip-path':'url(#tutEcoClip)'},eg);
+    const sc=E('g',{},scw); S.vis(sc,null,20.7,{fade:.25});
+    /* 切到「簡化」後，左側改顯示中心家庭與未同住親屬（與網站相同） */
+    const sp=E('g',{},eg); S.vis(sp,20.8);
+    u.sec(S,150,'中心家庭','',true,{p:sp});
+    u.field(14,170,492,'小明家庭',{p:sp}); u.field(14,206,492,'母、小明、妹',{p:sp});
+    u.btn(14,246,'↙ 從家系圖帶入中心家庭',{p:sp,fw:400,fs:12}); u.check(196,260,'中心圓用符號顯示成員',{p:sp,fs:12});
+    u.sec(S,306,'未同住親屬 → 外部系統','',true,{p:sp});
+    const ck=u.check(14,330,'自動把家系圖中未同住的親屬列為外部系統',{p:sp,fs:12}); ck.set(true);
+    u.text(14,358,'父（45）　已列為外部系統',{p:sp,fs:13,fill:C.ink});
+    u.sec(S,400,'外部系統','',true,{p:sp});
+    ['學校','社福中心','醫院'].forEach((n,i)=>{ u.rect(14,420+i*40,492,34,{p:sp,fill:C.card,stroke:'#e6e1d8',rx:8}); u.text(30,437+i*40,n,{p:sp,fs:13,fill:C.ink}); });
+    const SYS=[['學校',3.2],['社福中心',5.2],['醫院',7.2]];
+    const nS=t=>SYS.filter(x=>t>=x[1]+.1).length;
+    const LH=104, SH=96;
+    const linkTop=150, linkH=t=>nS(t)?nS(t)*LH:46;
+    const sysTop=t=>linkTop+36+linkH(t)+44+40;
+    /* 側欄捲動（模擬使用者往下捲到「外部系統」，改連線時再捲回上方） */
+    const want=t=>Math.max(0,sysTop(t)+nS(t)*SH-560);
+    const scrollAt=t=>{ let v=0;
+      SYS.forEach(([,ti],i)=>{ const prev=i?want(SYS[i-1][1]+.2):0; v+=(want(ti+.2)-prev)*prog(t,ti+.15,.45); });
+      return v*(1-prog(t,9.3,.6)); };
+    S.fn(t=>sc.setAttribute('transform',`translate(0,${-scrollAt(t)})`));
+    /* 連線區 */
+    u.sec(S,linkTop,'連線（自由網絡圖）','',true,{p:sc});
+    const le=u.text(26,linkTop+30,'還沒有連線。按「＋ 新增連線」，或先新增外部系統。',{p:sc,fs:12.5,fill:C.muted});
+    S.fn(t=>show(le,nS(t)?0:1));
+    const LINKS=[['學校','強連結（雙線）',11.8,null,null],['社福中心','一般',null,'箭頭：左→右',15.6],['醫院','薄弱（虛線）',13.4,null,null]];
+    LINKS.forEach(([n,ty,tt,fl,tf],i)=>{
+      const g=E('g',{},sc), y0=linkTop+18+i*LH; S.vis(g,SYS[i][1]+.6,null,{dy:-6});
+      u.rect(14,y0,492,LH-8,{p:g,fill:C.card,stroke:'#e6e1d8',rx:8});
+      E('circle',{cx:30,cy:y0+22,r:10,fill:C.teal},g); u.text(30,y0+22,String(i+1),{p:g,anchor:'middle',fs:11,fw:700,fill:'#fff'});
+      u.select(46,y0+7,190,n,{p:g}); u.text(250,y0+22,'—',{p:g,fs:13,fill:'#9aa6a2'});
+      u.select(266,y0+7,190,'小明',{p:g}); u.text(488,y0+22,'✕',{p:g,fs:15,fill:'#c25a3c',anchor:'middle'});
+      const ts=u.select(26,y0+42,232,'一般',{p:g}); if(tt) S.val(ts.t,[[0,'一般'],[tt,ty]]);
+      const fs2=u.select(266,y0+42,190,'箭頭：無',{p:g}); if(fl) S.val(fs2.t,[[0,'箭頭：無'],[tf,fl]]);
+      const lf=u.field(26,y0+74,430,'',{p:g,h:24,fs:12,ph:'線上文字（事件／日期），可留空'});
+      if(n==='社福中心'){ S.type(lf.t,'每週訪視',17.0,17.6,lf.box); S.fn(t=>show(lf.ph,t<17.0?1:0)); }
     });
-    const sb=u.btn(14,0,'＋ 新增系統',{p:eg});
-    S.fn(t=>{const n=(t>=4.6?1:0)+(t>=7.1?1:0)+(t>=9.7?1:0)+(t>=12.5?1:0); sb.setAttribute('transform',`translate(0,${280+n*46})`);});
-    S.clickF(18.8,190,68);
-    /* 畫布：先淡出家系圖 */
+    /* 連線類型下拉（學校那列） */
+    const LT=['強連結（雙線）','一般','薄弱（虛線）','壓力／衝突（鋸齒）','正式程序／法定（點虛線）'];
+    const dd=E('g',{},sc); S.fn(t=>show(dd,t>=11.2&&t<11.8?1:0));
+    const dy0=linkTop+18+76;
+    u.rect(26,dy0,232,LT.length*26+8,{p:dd,fill:'#fff',stroke:C.line,a:{filter:'url(#tutShadow)'}});
+    const dhl=u.rect(30,dy0+4,224,24,{p:dd,fill:C.tealSoft,stroke:'none',rx:4});
+    LT.forEach((x,i)=>u.text(38,dy0+16+i*26,x,{p:dd,fs:12.5}));
+    S.fn(t=>dhl.setAttribute('y',dy0+4+(t<11.5?26:0)));
+    const lb=u.btn(14,0,'＋ 新增連線',{p:sc});
+    S.fn(t=>lb.setAttribute('transform',`translate(0,${linkTop+18+linkH(t)+4})`));
+    /* 外部系統區 */
+    const ss=E('g',{},sc);
+    S.fn(t=>ss.setAttribute('transform',`translate(0,${sysTop(t)-sysTop(0)})`));
+    const S0=sysTop(0);
+    u.sec(S,S0-28,'外部系統','',true,{p:ss});
+    const se=u.text(26,S0,'尚未建立外部系統',{p:ss,fs:12.5,fill:C.muted}); S.fn(t=>show(se,nS(t)?0:1));
+    SYS.forEach(([n,ti],i)=>{
+      const g=E('g',{},ss), y0=S0-12+i*SH; S.vis(g,ti+.1,null,{dy:-6});
+      u.rect(14,y0,492,SH-8,{p:g,fill:C.card,stroke:'#e6e1d8',rx:8});
+      E('circle',{cx:30,cy:y0+22,r:10,fill:C.teal},g); u.text(30,y0+22,String(i+1),{p:g,anchor:'middle',fs:11,fw:700,fill:'#fff'});
+      const nf=u.field(46,y0+7,410,'',{p:g,ph:'例：學校、里長、就業服務站'}); S.type(nf.t,n,ti+.75,ti+1.15,nf.box);
+      S.fn(t=>show(nf.ph,t<ti+.75?1:0));
+      u.text(488,y0+22,'✕',{p:g,fs:15,fill:'#c25a3c',anchor:'middle'});
+      u.select(26,y0+42,232,'連結：一般',{p:g}); u.select(266,y0+42,190,'能量：不標示',{p:g});
+      u.check(26,y0+80,'此連結帶來壓力／衝突',{p:g,fs:12});
+    });
+    const sb=u.btn(14,0,'＋ 新增系統',{p:ss});
+    S.fn(t=>sb.setAttribute('transform',`translate(0,${S0-12+(nS(t)?nS(t)*SH:20)+4})`));
+    /* 游標：新增系統、輸入名稱（座標隨捲動換算） */
+    SYS.forEach(([n,ti],i)=>{
+      const yb=sysTop(ti)+(i?i*SH:20)-12+4+14;
+      S.clickF(ti,sb.cx,yb-scrollAt(ti));
+      S.clickF(ti+.65,200,sysTop(ti+.2)-12+i*SH+22-scrollAt(ti+.65));
+    });
+    const ly=i=>linkTop+18+i*LH;
+    S.clickF(11.1,140,ly(0)+57); S.clickF(11.7,140,dy0+16);
+    S.clickF(13.1,140,ly(2)+57); S.clickF(13.3,140,ly(2)+57);
+    S.clickF(15.4,360,ly(1)+57); S.clickF(16.8,240,ly(1)+86);
+    S.clickF(20.5,60,68);
+    /* 畫布：網絡圖（家系圖在中間，系統圍繞） */
     baseFamily(S,Geno(S,zoomG(S)),{out:2.5});
-    const cg=zoomG(S,1.12,280), G=Geno(S,cg);
+    const net=E('g',{},S.gCanvas); S.vis(net,2.6,20.6);
+    const ng=E('g',{transform:'translate(400,250) scale(.82) translate(-400,-250)'},net);
+    const G=Geno(S,ng); baseFamily(S,G,{});
+    G.tie('F','K','conflict',{}); G.tie('M','S','close',{}); G.blob(['M','K','S'],{});
+    const K={x:400+(340-400)*.82,y:250+(345-250)*.82};
+    const NS=[['學校',130,95,'strong',3.6,11.9],['社福中心',680,330,'normal',5.6,null],['醫院',150,470,'weak',7.6,13.5]];
+    NS.forEach(([n,x,y,ty,ti,tch])=>{
+      const w=E('g',{},net); S.vis(w,ti);
+      const d0=t=>{const dx=K.x-x,dy=K.y-y,Lh=Math.hypot(dx,dy),ux=dx/Lh,uy=dy/Lh; return {sx:x+ux*52,sy:y+uy*52,ex:K.x-ux*30,ey:K.y-uy*30,ux,uy};};
+      const one=E('path',{fill:'none',stroke:C.ink,'stroke-width':2},net), two=E('path',{fill:'none',stroke:C.ink,'stroke-width':2},net);
+      net.insertBefore(one,net.firstChild); net.insertBefore(two,net.firstChild);
+      S.fn(t=>{const p=d0(t), on=t>=ti+.3, changed=tch!=null&&t>=tch;
+        show(one,on?1:0);
+        if(ty==='strong'&&changed){ const o=4; one.setAttribute('d',`M${p.sx-p.uy*o},${p.sy+p.ux*o} L${p.ex-p.uy*o},${p.ey+p.ux*o}`);
+          two.setAttribute('d',`M${p.sx+p.uy*o},${p.sy-p.ux*o} L${p.ex+p.uy*o},${p.ey-p.ux*o}`); show(two,1); }
+        else { one.setAttribute('d',`M${p.sx},${p.sy} L${p.ex},${p.ey}`); show(two,0); }
+        one.setAttribute('stroke-dasharray',ty==='weak'&&changed?'8 7':'none');
+        one.setAttribute('marker-end',n==='社福中心'&&t>=15.7?'url(#tutArrow)':'');});
+      E('circle',{cx:x,cy:y,r:50,fill:'#ecebe6',stroke:C.ink,'stroke-width':2},w);
+      E('text',{x,y,'text-anchor':'middle','dominant-baseline':'central','font-size':15,'font-weight':700,fill:C.ink,'font-family':FONT},w,n);
+    });
+    const ev=E('text',{x:(680+K.x)/2,y:(330+K.y)/2-12,'text-anchor':'middle','font-size':14,fill:C.ink,'font-family':FONT,stroke:'#fff','stroke-width':4,'paint-order':'stroke'},net,'每週訪視');
+    S.fn(t=>show(ev,t>=17.6?1:0));
+    /* 切換到「簡化：一個圓」 */
+    const simp=E('g',{},S.gCanvas); S.vis(simp,20.7);
     const ctr={x:400,y:280};
-    const R=t=>lerp(92,170,prog(t,19.0,.8));
-    const cgp=E('g',{},cg); S.vis(cgp,3.8);
-    const cc=E('circle',{cx:ctr.x,cy:ctr.y,r:92,fill:'#fff',stroke:C.ink,'stroke-width':2.6},cgp);
-    const ttl=E('text',{x:ctr.x,y:ctr.y-58,'text-anchor':'middle','font-size':16,'font-weight':700,fill:C.ink,'font-family':FONT},cgp,'小明家庭');
-    /* 中心：簡化（三個符號） */
-    const simp=E('g',{},cgp);
+    E('circle',{cx:ctr.x,cy:ctr.y,r:100,fill:'#fff',stroke:C.ink,'stroke-width':2.6},simp);
+    E('text',{x:ctr.x,y:ctr.y-62,'text-anchor':'middle','font-size':16,'font-weight':700,fill:C.ink,'font-family':FONT},simp,'小明家庭');
     [['f',345,ctr.y-4,'母'],['m',400,ctr.y+10,'小明',1],['f',455,ctr.y-4,'妹']].forEach(([sx,x,y,l,cl])=>{
       if(sx==='m') E('rect',{x:x-18,y:y-18,width:36,height:36,fill:cl?C.client:'#fff',stroke:C.ink,'stroke-width':2.2},simp);
       else E('circle',{cx:x,cy:y,r:18,fill:'#fff',stroke:C.ink,'stroke-width':2.2},simp);
       E('text',{x,y:y+34,'text-anchor':'middle','font-size':14,fill:C.text,'font-family':FONT},simp,l);
     });
-    /* 中心：完整家系圖（迷你） */
-    const full=E('g',{transform:`translate(${ctr.x-400*.6},${ctr.y+12-250*.6}) scale(.6)`},cgp);
-    const G2=Geno(S,full); baseFamily(S,G2,{});
-    S.fn(t=>{const k=prog(t,19.0,.8), r=R(t); cc.setAttribute('r',r); show(simp,1-k); show(full,k); show(cc,1);
-      ttl.setAttribute('y',ctr.y-r+30-k*6);});
-    /* 外部系統 */
-    const S4=[['父（未同住）',140,110,'stress',4.8],['學校',670,110,'strong',8.2],['社福中心',680,450,'resource',11.0],['醫院',130,450,'weak',13.7]];
-    S4.forEach(([n,x,y,ty,ti])=>{
-      const w=E('g',{},cg); S.vis(w,ti-.2);
-      const rx=Math.max(70,tw(n,16)/2+22), ry=32;
-      E('ellipse',{cx:x,cy:y,rx,ry,fill:'#fff',stroke:C.ink,'stroke-width':2.2},w);
-      E('text',{x,y,'text-anchor':'middle','dominant-baseline':'central','font-size':16,fill:C.ink,'font-weight':700,'font-family':FONT},w,n);
-      const d=t=>{const r=R(t),dx=x-ctr.x,dy=y-ctr.y,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L;
-        const sx=ctr.x+ux*(r+6),sy=ctr.y+uy*(r+6),k=1/Math.sqrt((ux/rx)**2+(uy/ry)**2),ex=x-ux*(k+6),ey=y-uy*(k+6);
-        if(ty==='resource') return `M${ex},${ey} L${sx+ux*6},${sy+uy*6}`;
-        if(ty!=='stress') return `M${sx},${sy} L${ex},${ey}`;
-        const len=Math.hypot(ex-sx,ey-sy),n=Math.round(len/13); let s=`M${sx},${sy}`;
-        for(let i=1;i<n;i++){const f=i/n,sd=i%2?1:-1; s+=` L${sx+(ex-sx)*f-uy*7*sd},${sy+(ey-sy)*f+ux*7*sd}`;} return s+` L${ex},${ey}`;};
-      const st={stress:{sw:2.2,stroke:C.orange},strong:{sw:6},resource:{sw:2.6,arrow:1},weak:{sw:2.4,dash:'8 7'}}[ty];
-      G.path(d,Object.assign({draw:[ti,ti+.7],p:cg},st));
+    [['學校',150,110],['社福中心',660,110],['醫院',150,450],['父（未同住）',660,450]].forEach(([n,x,y])=>{
+      const dx=ctr.x-x,dy=ctr.y-y,Lh=Math.hypot(dx,dy),ux=dx/Lh,uy=dy/Lh;
+      E('path',{d:`M${x+ux*50},${y+uy*50} L${ctr.x-ux*104},${ctr.y-uy*104}`,stroke:C.ink,'stroke-width':2,fill:'none'},simp);
+      E('circle',{cx:x,cy:y,r:50,fill:'#fff',stroke:C.ink,'stroke-width':2},simp);
+      E('text',{x,y,'text-anchor':'middle','dominant-baseline':'central','font-size':n.length>3?13:15,'font-weight':700,fill:C.ink,'font-family':FONT},simp,n);
     });
-    S.go(16,S.Cv(600,300)); S.go(24,S.Cv(620,310));
+    S.go(23,S.Cv(600,300)); S.go(25.5,S.Cv(620,310));
   },
-  tryIt(){ if(isMob()&&typeof mobPane==='function') mobPane('edit'); coach('#tabE','切到「生態圖」，按「從家系圖帶入中心家庭」開始'); }
+  tryIt(){ if(isMob()&&typeof mobPane==='function') mobPane('edit'); coach('#tabE','切到「生態圖」，在「外部系統」按「＋ 新增系統」開始'); }
 });
 
 /* ---------- 5. 匯出 ---------- */
@@ -3809,9 +3972,10 @@ CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
   caps:[[0,'畫好了，放進紀錄或簡報'],
     [1.6,'「下載 ▾」→「PPTX（可編輯）」：每個人物、每條線都是原生圖形'],
     [5.4,'在 PowerPoint 點了就能改顏色、改文字'],
-    [10.6,'用 Word？「下載 ▾」選 SVG →「圖形格式 → 轉換成圖形」→ 取消群組'],
+    [10.6,'用 Word？「下載 ▾」選「SVG 向量圖」，在 Word「插入 → 圖片」放進來'],
+    [13.0,'點圖片 →「圖形格式」→「轉換成圖形」，再右鍵「取消群組」'],
     [16.2,'就能逐一點選方框、圓圈、線條修改；要疊在文字上就勾「透明背景」'],
-    [19.6,'記得「存檔 JSON」：之後可再開啟繼續改；資料只存在你的電腦']],
+    [19.6,'圖檔改不回工具裡；之後還要修改，請另外「存檔 JSON」（下一章）']],
   build(S){
     const L=S.L, u=UI(S.gForm), G=Geno(S,zoomG(S));
     u.tabs(S,null); u.pills(S,54,['表格','關係矩陣','貼逐字稿'],[[0,0]]);
@@ -3827,12 +3991,12 @@ CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
       S.fn(t=>{const k=prog(t,t0+.15,.8); const x=lerp(a.x,b.x,k), y=lerp(a.y+40,b.y,k)-Math.sin(k*Math.PI)*80;
         g.setAttribute('transform',`translate(${x},${y}) scale(${lerp(.6,1,k)})`); show(g,t>=t0+.1&&t<t0+1.5?1-prog(t,t0+1.1,.35):0);});
     };
-    dl('pptx',2.6,'⬇ 家系圖.pptx',C.orange);
+    dl('pptx',2.6,'⬇ 家系圖_日期.pptx',C.orange);
     /* PowerPoint 視窗 */
     const pp=E('g',{},S.gCanvas); S.fn(t=>{const k=prog(t,3.9,.5)*(1-prog(t,10.4,.4)); show(pp,k); pp.setAttribute('transform',`translate(0,${(1-k)*40})`);});
     E('rect',{x:16,y:12,width:768,height:536,rx:10,fill:'#fff',stroke:'#c9c3b8',filter:'url(#tutShadow)'},pp);
     E('path',{d:'M16,22 a10,10 0 0 1 10,-10 h748 a10,10 0 0 1 10,10 v24 h-768z',fill:'#c43e1c'},pp);
-    E('text',{x:400,y:30,'text-anchor':'middle','dominant-baseline':'central','font-size':14,fill:'#fff','font-family':FONT},pp,'家系圖.pptx — PowerPoint');
+    E('text',{x:400,y:30,'text-anchor':'middle','dominant-baseline':'central','font-size':14,fill:'#fff','font-family':FONT},pp,'家系圖_日期.pptx — PowerPoint');
     E('rect',{x:16,y:46,width:768,height:54,fill:'#f6f3ee'},pp);
     ['常用','插入','設計','圖形格式'].forEach((l,i)=>E('text',{x:40+i*70,y:62,'font-size':13,fill:i===3?'#c43e1c':C.text,'font-weight':i===3?700:400,'dominant-baseline':'central','font-family':FONT},pp,l));
     E('text',{x:40,y:86,'font-size':12,fill:C.muted,'dominant-baseline':'central','font-family':FONT},pp,'圖案填滿');
@@ -3858,14 +4022,18 @@ CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
     E('rect',{x:16,y:46,width:768,height:54,fill:'#f6f7f9'},wd);
     const wt=['常用','插入','版面配置','圖形格式'];
     const wtab=wt.map((l,i)=>E('text',{x:40+i*84,y:62,'font-size':13,fill:C.text,'dominant-baseline':'central','font-family':FONT},wd,l));
-    S.fn(t=>{const on=t>=13.3; show(wtab[3],t>=12.5?1:0); wtab[3].setAttribute('fill',on?'#2b579a':C.text); wtab[3].setAttribute('font-weight',on?700:400);});
+    S.fn(t=>{const on=t>=13.3; show(wtab[3],t>=12.5?1:0); wtab[3].setAttribute('fill',on?'#2b579a':C.text); wtab[3].setAttribute('font-weight',on?700:400);
+      const ins=t>=11.7&&t<12.3; wtab[1].setAttribute('fill',ins?'#2b579a':C.text); wtab[1].setAttribute('font-weight',ins?700:400);});
+    const insm=E('g',{},wd); S.fn(t=>show(insm,t>=11.75&&t<12.25?1:0));
+    E('rect',{x:116,y:72,width:150,height:24,rx:4,fill:'#fff',stroke:'#2b579a'},insm);
+    E('text',{x:191,y:84,'text-anchor':'middle','dominant-baseline':'central','font-size':12.5,fill:'#2b579a','font-family':FONT},insm,'圖片 › 此裝置… (.svg)');
     const cvb=E('g',{},wd); S.fn(t=>show(cvb,t>=13.3?1:0));
     const cvr=E('rect',{x:30,y:72,width:96,height:24,rx:4,fill:'#fff',stroke:'#2b579a'},cvb);
     E('text',{x:78,y:84,'text-anchor':'middle','dominant-baseline':'central','font-size':12.5,fill:'#2b579a','font-weight':700,'font-family':FONT},cvb,'轉換成圖形');
     S.fn(t=>cvr.setAttribute('fill',t>=14.05&&t<14.4?C.tealSoft:'#fff'));
     E('rect',{x:170,y:110,width:460,height:430,fill:'#fff',stroke:'#dde1e6'},wd);
     [0,1,2].forEach(i=>E('rect',{x:200,y:130+i*18,width:i===2?250:400,height:8,rx:4,fill:'#d9dde3'},wd));
-    const pic=E('g',{transform:'translate(160,175) scale(.6)'},wd);
+    const pic=E('g',{transform:'translate(160,175) scale(.6)'},wd); S.fn(t=>show(pic,prog(t,12.25,.3)));
     const G4=Geno(S,pic); baseFamily(S,G4,{}); G4.tie('F','K','conflict',{}); G4.tie('M','S','close',{});
     [0,1].forEach(i=>E('rect',{x:200,y:480+i*18,width:i?300:400,height:8,rx:4,fill:'#d9dde3'},wd));
     const box=E('rect',{x:296,y:218,width:208,height:206,fill:'none',stroke:'#2b579a','stroke-width':1.5},wd);
@@ -3875,84 +4043,110 @@ CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
       const q=E('rect',{x:160+(x-34)*.6,y:175+(y-34)*.6,width:68*.6,height:68*.6,fill:'none',stroke:'#2b579a','stroke-width':1.3,'stroke-dasharray':'3 2'},hs);
       S.fn(t=>show(q,prog(t,14.3+i*.18,.3)));
     });
-    S.clickC(12.4,400,300); S.clickC(13.2,40+3*84+28,62); S.clickC(14.0,78,84);
-    /* 存檔 JSON */
-    dl('json',20.6,'⬇ 家系圖.json',C.teal);
-    S.go(23,S.Cv(600,300));
+    S.clickC(11.7,40+84+14,62); S.clickC(12.1,191,84);
+    S.clickC(12.6,400,300); S.clickC(13.2,40+3*84+28,62); S.clickC(14.0,78,84);
+    S.go(21,S.Cv(600,300)); S.go(24,S.Cv(610,305));
   },
   tryIt(){ if(isMob()) openHdr(); coach('#dlBtn','按「下載 ▾」→「PPTX（可編輯）」，用 PowerPoint 開啟即可修改'); }
 });
 
 /* ---------- 6. 存檔與續編 ---------- */
-CH.push({title:'存檔與續編',sub:'每位個案存成一個檔，日後再改',dur:24,
+CH.push({title:'存檔與續編',sub:'每位個案存成一個檔，日後再改',dur:26,
   caps:[[0,'每位個案都能存成一個檔案，日後再打開繼續修改'],
-    [1.6,'① 畫好後按上方「存檔 JSON」，下載一個 .json 檔'],
-    [4.4,'建議用個案代號命名，例如「A001家系圖.json」，不要用真實姓名'],
-    [8.6,'② 下次打開工具，按「開啟 JSON」選擇檔案，圖會完整載入'],
-    [14.0,'③「暫存」可在同一台電腦先存好幾份；清除瀏覽器資料後會消失'],
-    [19.4,'資料只存在你的電腦、不會上傳；檔案請依機構個資規範保管']],
+    [1.6,'① 按上方「存檔 JSON」，會先詢問檔案名稱'],
+    [3.6,'建議用個案代號命名，例如「A001家系圖」，請勿使用個案真實姓名'],
+    [7.0,'按「儲存」後，檔案會存到瀏覽器的「下載」位置'],
+    [9.4,'② 下次打開工具，按「開啟 JSON」，在電腦的視窗裡選這個檔案'],
+    [12.8,'圖會完整載入；再存檔時，檔名會預設沿用原本的名稱'],
+    [15.0,'③「暫存 ▾」可在同一台電腦先存好幾份，輸入名稱後按「儲存」'],
+    [20.6,'暫存只在這個瀏覽器、清除瀏覽器資料會消失；長期保存請用「存檔 JSON」']],
   build(S){
-    const L=S.L, u=UI(S.gForm);
+    const L=S.L, isD=L.k==='d', u=UI(S.gForm);
     u.tabs(S,null); u.pills(S,54,['表格','關係矩陣','貼逐字稿'],[[0,0]]);
     collapsedSecs(S,u,[['成員',4],['婚姻／伴侶關係',1],['情感關係',2],['生活圈（同住／關係密切）',1]],S.gForm);
-    /* 畫布：存檔後關掉（空白），開啟檔案後整張圖回來 */
+    /* 畫布：存檔後關掉工具（空白），開啟檔案後整張圖回來 */
     const zg=zoomG(S), G=Geno(S,zg);
     baseFamily(S,G,{}); G.tie('F','K','conflict',{}); G.tie('M','S','close',{}); G.blob(['M','K','S'],{});
-    S.fn(t=>show(zg,clamp((1-prog(t,8.0,.4))+prog(t,12.5,.6))));
-    const blank=E('g',{},S.gCanvas); S.fn(t=>show(blank,t>=8.4&&t<12.4?1:0));
+    S.fn(t=>show(zg,clamp((1-prog(t,8.6,.4))+prog(t,12.6,.6))));
+    const blank=E('g',{},S.gCanvas); S.fn(t=>show(blank,t>=9.0&&t<12.5?1:0));
     E('text',{x:400,y:270,'text-anchor':'middle','dominant-baseline':'central','font-size':20,fill:C.muted,'font-family':FONT},blank,'下次打開工具：空白畫面');
-    /* 小視窗（畫布座標） */
-    const win=(tin,tout,title)=>{
-      const g=E('g',{},S.gCanvas);
-      S.fn(t=>{const k=prog(t,tin,.35)*(1-prog(t,tout,.3)); show(g,k); g.setAttribute('transform',`translate(0,${(1-k)*20})`);});
-      E('rect',{x:170,y:110,width:460,height:270,rx:14,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},g);
-      const w=UI(g); w.text(196,144,title,{fs:19,fw:700,fill:C.ink}); return {g,w};
-    };
-    /* ① 存檔 */
-    S.hdr('json',2.6);
-    const sv=win(3.0,6.5,'儲存檔案');
-    sv.w.text(196,186,'檔名',{fs:14,fill:C.muted});
-    const fn=sv.w.field(196,200,408,'',{h:42,fs:17}); S.type(fn.t,'A001家系圖.json',3.7,4.8,fn.box);
-    sv.w.text(196,270,'位置',{fs:14,fill:C.muted}); sv.w.text(244,270,'文件 › 個案資料',{fs:16,fill:C.ink});
-    sv.w.btn(424,322,'取消',{w:80,h:36,fw:400}); const sb=sv.w.btn(516,322,'儲存',{w:88,h:36,primary:1});
-    S.clickC(3.5,400,221); S.clickC(6.2,sb.cx,sb.cy);
-    const toast=E('g',{},S.gCanvas); S.fn(t=>show(toast,t>=6.6&&t<8.0?1:0));
-    E('rect',{x:240,y:24,width:320,height:44,rx:22,fill:C.ink},toast);
-    E('text',{x:400,y:46,'text-anchor':'middle','dominant-baseline':'central','font-size':16,fill:'#fff','font-family':FONT},toast,'已存檔：A001家系圖.json');
-    /* ② 開啟 */
-    S.hdr('open',9.4);
-    const op=win(9.8,12.4,'開啟檔案');
+    /* 全畫面共用：遮罩、提示訊息（與網站相同位置：畫面下方中央） */
+    const T=(g,x,y,str,o={})=>E('text',{x,y,'font-size':o.fs,fill:o.fill||C.text,'font-weight':o.fw||400,'text-anchor':o.anchor||'start','dominant-baseline':'central','font-family':FONT},g,str);
+    const toast=(t0,t1,msg)=>{ const g=E('g',{},S.gTop); S.fn(t=>show(g,t>=t0&&t<t1?1:0));
+      const fs=isD?16:24, w=tw(msg,fs)+48, h=isD?44:64, y=L.H-(isD?190:330);
+      E('rect',{x:(L.W-w)/2,y,width:w,height:h,rx:8,fill:C.ink},g); T(g,L.W/2,y+h/2,msg,{fs,fill:'#fff',anchor:'middle'}); };
+    /* ① 存檔對話框（與網站的「存檔 JSON」視窗一致） */
+    S.hdr('json',2.4);
+    const sv=E('g',{},S.gTop); S.fn(t=>show(sv,t>=2.55&&t<6.9?1:0));
+    E('rect',{x:0,y:0,width:L.W,height:L.H,fill:'rgba(18,52,59,.45)'},sv);
+    const bw=isD?520:800, bh=isD?300:440, bx=(L.W-bw)/2, by=isD?250:520, f=isD?1:1.5;
+    E('rect',{x:bx,y:by,width:bw,height:bh,rx:14,fill:'#fff',filter:'url(#tutShadow)'},sv);
+    T(sv,bx+26*f,by+34*f,'存檔 JSON',{fs:19*f,fw:700,fill:C.ink});
+    T(sv,bx+26*f,by+68*f,'檔案名稱',{fs:14*f,fill:C.muted});
+    const fx=bx+26*f, fy=by+84*f, fw=bw-52*f-50*f, fh=40*f;
+    const fbox=E('rect',{x:fx,y:fy,width:fw,height:fh,rx:8,fill:'#fff',stroke:C.teal,'stroke-width':2},sv);
+    const sel=E('rect',{x:fx+8*f,y:fy+8*f,width:tw('家系圖_2026-10-28',16*f)+4,height:fh-16*f,fill:'#b8dce1'},sv);
+    S.fn(t=>show(sel,t>=2.6&&t<3.9?1:0));
+    const ftx=T(sv,fx+10*f,fy+fh/2,'',{fs:16*f,fill:C.text});
+    S.fn(t=>{ if(t<3.9) ftx.textContent='家系圖_2026-10-28'; });
+    S.type(ftx,'A001家系圖',3.9,4.9,null);
+    T(sv,fx+fw+10*f,fy+fh/2,'.json',{fs:14*f,fill:C.muted});
+    T(sv,fx,by+150*f,'建議用個案代號命名，例如「A001家系圖」，請勿使用個案真實姓名。',{fs:12.5*f,fill:'#41504e'});
+    T(sv,fx,by+172*f,'檔案會存到瀏覽器的「下載」位置；之後按「開啟 JSON」選這個檔案即可繼續修改。',{fs:12.5*f,fill:'#41504e'});
+    const b1x=bx+bw-26*f-90*f, b2x=b1x-10*f-80*f, byy=by+bh-56*f;
+    E('rect',{x:b2x,y:byy,width:80*f,height:36*f,rx:6,fill:'#fff',stroke:C.line},sv); T(sv,b2x+40*f,byy+18*f,'取消',{fs:13*f,anchor:'middle',fill:C.ink});
+    E('rect',{x:b1x,y:byy,width:90*f,height:36*f,rx:6,fill:C.orange},sv); T(sv,b1x+45*f,byy+18*f,'儲存',{fs:13*f,anchor:'middle',fill:'#fff',fw:700});
+    S.click(3.4,{x:fx+fw*.5,y:fy+fh/2}); S.click(6.6,{x:b1x+45*f,y:byy+18*f});
+    toast(7.0,8.6,'已存檔「A001家系圖.json」，下次可用「開啟 JSON」續編');
+    /* ② 開啟 JSON：電腦的選擇檔案視窗 */
+    S.hdr('open',9.8);
+    const op=E('g',{},S.gTop); S.fn(t=>show(op,t>=10.0&&t<12.5?1:0));
+    const ow=isD?560:820, oh=isD?330:520, ox=(L.W-ow)/2, oy=isD?230:480, g2=isD?1:1.45;
+    E('rect',{x:ox,y:oy,width:ow,height:oh,rx:12,fill:'#f6f6f6',stroke:'#c8c8c8',filter:'url(#tutShadow)'},op);
+    E('rect',{x:ox,y:oy,width:ow,height:40*g2,rx:12,fill:'#e9e9e9'},op);
+    [0,1,2].forEach(i=>E('circle',{cx:ox+20*g2+i*18*g2,cy:oy+20*g2,r:6*g2,fill:['#ff5f57','#febc2e','#28c840'][i]},op));
+    T(op,ox+ow/2,oy+20*g2,'選擇檔案（電腦的視窗）',{fs:13*g2,anchor:'middle',fill:'#555'});
+    T(op,ox+20*g2,oy+64*g2,'下載項目',{fs:12*g2,fill:'#888'});
     const files=['A001家系圖.json','B002家系圖.json','C003生態圖.json'];
-    const hl=op.w.rect(186,170,428,40,{rx:8,fill:C.tealSoft,stroke:'none'}); S.fn(t=>show(hl,t>=11.0?1:0));
-    files.forEach((f,i)=>{op.w.text(206,190+i*46,'▤',{fs:16,fill:C.teal}); op.w.text(232,190+i*46,f,{fs:16,fill:C.ink});});
-    op.w.btn(424,322,'取消',{w:80,h:36,fw:400}); const ob=op.w.btn(516,322,'開啟',{w:88,h:36,primary:1});
-    S.clickC(10.9,330,190); S.clickC(12.0,ob.cx,ob.cy);
-    /* ③ 暫存（標題列下拉選單，全域座標） */
-    S.hdr('draft',14.4);
-    const isD=L.k==='d', fs=isD?15:24, ih=isD?40:62;
-    const b=isD?{x:S.H('draft').x-80,y:58,w:400}:{x:60,y:560,w:780};
-    const dm=E('g',{},S.gTop); S.fn(t=>show(dm,t>=14.5&&t<19.2?1:0));
-    E('rect',{x:b.x,y:b.y,width:b.w,height:ih*4+40,rx:12,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},dm);
-    const T=(x,y,s2,o={})=>E('text',{x,y,'font-size':o.fs||fs,fill:o.fill||C.text,'font-weight':o.fw||400,'text-anchor':o.anchor||'start','dominant-baseline':'central','font-family':FONT},dm,s2);
-    T(b.x+18,b.y+ih*.6,'● 自動暫存：剛剛',{fill:C.teal,fs:fs*.85});
-    T(b.x+18,b.y+ih*1.6,'A001 初談版'); T(b.x+b.w-18,b.y+ih*1.6,'10/28 14:20',{anchor:'end',fill:C.muted,fs:fs*.8});
-    const s2=E('g',{},dm); S.fn(t=>show(s2,t>=16.6?1:0));
-    E('rect',{x:b.x+8,y:b.y+ih*2.1,width:b.w-16,height:ih,rx:6,fill:C.tealSoft},s2);
-    E('text',{x:b.x+18,y:b.y+ih*2.6,'font-size':fs,fill:C.ink,'font-weight':700,'dominant-baseline':'central','font-family':FONT},s2,'A001 第二次會談');
-    E('text',{x:b.x+b.w-18,y:b.y+ih*2.6,'font-size':fs*.8,fill:C.muted,'text-anchor':'end','dominant-baseline':'central','font-family':FONT},s2,'剛剛');
-    const fy=b.y+ih*3.3, fw=b.w-36-(isD?110:170);
-    const fbox=E('rect',{x:b.x+18,y:fy,width:fw,height:ih*.85,rx:6,fill:'#fff',stroke:C.line},dm);
-    const ftx=T(b.x+28,fy+ih*.42,'');
-    S.fn(t=>{ if(t>=16.6){ftx.textContent='';} });
-    S.type(ftx,'A001 第二次會談',15.2,16.0,fbox);
-    S.fn(t=>{ if(t>=16.6) ftx.textContent=''; });
-    const bx=b.x+18+fw+10, bw=b.w-36-fw-10;
-    E('rect',{x:bx,y:fy,width:bw,height:ih*.85,rx:6,fill:C.orange},dm);
-    T(bx+bw/2,fy+ih*.42,'＋ 暫存',{anchor:'middle',fill:'#fff',fw:700});
-    S.click(15.0,{x:b.x+18+fw/2,y:fy+ih*.42}); S.click(16.4,{x:bx+bw/2,y:fy+ih*.42});
-    S.go(20,S.Cv(600,300));
+    const hl=E('rect',{x:ox+12*g2,y:oy+80*g2,width:ow-24*g2,height:36*g2,rx:6,fill:'#cfe2ff'},op); S.fn(t=>show(hl,t>=11.1?1:0));
+    files.forEach((fn,i)=>T(op,ox+28*g2,oy+98*g2+i*40*g2,'▤  '+fn,{fs:14*g2,fill:C.text}));
+    const obx=ox+ow-110*g2, oby=oy+oh-52*g2;
+    E('rect',{x:obx,y:oby,width:90*g2,height:34*g2,rx:6,fill:'#2f6fed'},op); T(op,obx+45*g2,oby+17*g2,'開啟',{fs:13*g2,anchor:'middle',fill:'#fff',fw:700});
+    E('rect',{x:obx-100*g2,y:oby,width:90*g2,height:34*g2,rx:6,fill:'#fff',stroke:'#c8c8c8'},op); T(op,obx-55*g2,oby+17*g2,'取消',{fs:13*g2,anchor:'middle',fill:C.text});
+    S.click(11.0,{x:ox+120*g2,y:oy+98*g2}); S.click(12.2,{x:obx+45*g2,y:oby+17*g2});
+    toast(12.7,14.4,'已載入檔案');
+    /* ③ 暫存 ▾（與網站選單同樣的排列） */
+    S.hdr('draft',15.6);
+    const fs=isD?14:22, rh=isD?34:52;
+    const b=isD?{x:S.H('draft').x-60,y:58,w:360}:{x:60,y:560,w:780};
+    const dm=E('g',{},S.gTop); S.fn(t=>show(dm,t>=15.75&&t<21.6?1:0));
+    E('rect',{x:b.x,y:b.y,width:b.w,height:rh*7.2,rx:12,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},dm);
+    E('circle',{cx:b.x+20,cy:b.y+rh*.6,r:isD?3.5:5,fill:C.teal},dm);
+    T(dm,b.x+30,b.y+rh*.6,'自動儲存：10/28 14:35',{fs:fs*.85,fill:C.teal});
+    T(dm,b.x+16,b.y+rh*1.4,'存成暫存檔（只存在這台電腦的這個瀏覽器）',{fs:fs*.78,fill:C.muted});
+    const iw=b.w-32-(isD?70:110), iy=b.y+rh*1.85, ih=rh*.9;
+    const ibox=E('rect',{x:b.x+16,y:iy,width:iw,height:ih,rx:6,fill:'#fff',stroke:C.line},dm);
+    const itx=T(dm,b.x+26,iy+ih/2,'小明家庭',{fs:fs*.95});
+    const isel=E('rect',{x:b.x+24,y:iy+ih*.2,width:tw('小明家庭',fs*.95)+4,height:ih*.6,fill:'#b8dce1'},dm);
+    dm.insertBefore(isel,itx);
+    S.fn(t=>{ show(isel,t>=16.6&&t<17.2?1:0); if(t<17.2) itx.textContent='小明家庭'; });
+    S.type(itx,'A001 第二次會談',17.2,18.2,ibox);
+    const sbx=b.x+16+iw+8, sbw=b.w-32-iw-8;
+    E('rect',{x:sbx,y:iy,width:sbw,height:ih,rx:6,fill:C.orange},dm); T(dm,sbx+sbw/2,iy+ih/2,'儲存',{fs:fs*.95,anchor:'middle',fill:'#fff',fw:700});
+    const cntT=T(dm,b.x+16,b.y+rh*3.25,'暫存檔（1）',{fs:fs*.78,fill:C.muted});
+    S.fn(t=>{cntT.textContent=t>=18.7?'暫存檔（2）':'暫存檔（1）';});
+    const slot=(y,name,time,o={})=>{ const g=E('g',{},dm);
+      if(o.hl) E('rect',{x:b.x+8,y:y-rh*.45,width:b.w-16,height:rh*.9,rx:6,fill:C.tealSoft},g);
+      T(g,b.x+18,y,name,{fs,fill:C.text}); T(g,b.x+b.w-44,y,time,{fs:fs*.78,fill:C.muted,anchor:'end'});
+      T(g,b.x+b.w-24,y,'✕',{fs,fill:'#c0392b',anchor:'middle'}); return g; };
+    const sNew=slot(b.y+rh*3.95,'A001 第二次會談','10/28 14:36',{hl:1}); S.fn(t=>show(sNew,t>=18.7?1:0));
+    const sOld=slot(b.y+rh*3.95,'A001 初談版','10/28 14:20'); S.fn(t=>sOld.setAttribute('transform',`translate(0,${t>=18.7?rh:0})`));
+    T(dm,b.x+16,b.y+rh*6.4,'暫存檔不會隨檔案帶走；要換電腦或長期保存請用「存檔 JSON」。',{fs:fs*.7,fill:C.muted});
+    S.click(16.6,{x:b.x+16+iw/2,y:iy+ih/2}); S.click(18.5,{x:sbx+sbw/2,y:iy+ih/2});
+    toast(18.8,20.4,'已暫存「A001 第二次會談」');
+    S.go(22,S.Cv(600,300)); S.go(25,S.Cv(610,305));
   },
-  tryIt(){ if(isMob()) openHdr(); coach('[onclick^="saveJSON"]','畫好後按「存檔 JSON」；下次按「開啟 JSON」選檔案就能繼續改'); }
+  tryIt(){ if(isMob()) openHdr(); coach('[onclick^="saveJSON"]','按「存檔 JSON」，輸入檔名（建議用個案代號）後儲存；下次按「開啟 JSON」繼續改'); }
 });
 
 /* ---------- 7. 實務應用設計 ---------- */
