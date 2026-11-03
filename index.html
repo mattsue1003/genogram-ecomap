@@ -532,6 +532,12 @@ details.help .body b{color:var(--ink)}
         </div>
         <p class="hint">會取家系圖的案主與「生活圈」同住成員；沒有生活圈時取案主、配偶與子女。帶入後可自行修改。</p>
       </div>
+      <div class="sec" id="secInner" style="display:none">
+        <h2>圓內成員之間的關係</h2>
+        <div id="innerList"></div>
+        <button class="btn sm" onclick="addInner()">＋ 新增成員關係</button>
+        <p class="hint">在中心圓裡的家人之間畫線，例如母親 ↔ 女兒。需勾選上方「中心圓用符號顯示成員」。線的種類與外部系統相同：正向、強烈、負向、緊張、關係阻斷。</p>
+      </div>
       <div class="sec" id="secGenoLink" style="display:none">
         <h2>未同住親屬 → 外部系統</h2>
         <label class="chk"><input type="checkbox" id="optAutoRel" checked onchange="syncUI()"> 自動把家系圖中未同住的親屬列為外部系統</label>
@@ -879,6 +885,7 @@ function syncUI(){
           <option value="strong" ${s.strength==='strong'?'selected':''}>連結：強</option>
           <option value="normal" ${s.strength==='normal'?'selected':''}>連結：一般</option>
           <option value="weak" ${s.strength==='weak'?'selected':''}>連結：薄弱</option>
+          <option value="cut" ${s.strength==='cut'?'selected':''}>連結：關係阻斷</option>
         </select>
         <select onchange="S('${s.id}').flow=this.value;render()">
           <option value="none" ${s.flow==='none'?'selected':''}>能量：不標示</option>
@@ -900,7 +907,46 @@ function syncUI(){
 
   renderGenoLink();
   renderLinkList();
+  renderInnerList();
   render();
+}
+/* ---- 簡化模式：圓內成員之間的關係 ---- */
+const INNER_TYPES={pos:'正向關係',strong:'強烈關係',neg:'負向關係（虛線）',tension:'緊張關係（鋸齒）',cut:'關係阻斷'};
+const centerPersons=()=>(state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,6)
+  .map(nm=>state.geno.persons.find(q=>label(q)===nm)).filter(Boolean);
+function addInner(){
+  snapshot(); state.eco.inner ||= [];
+  const ps=centerPersons();
+  state.eco.inner.push({id:nid('i'),a:ps[0]?.id||'',b:ps[1]?.id||'',type:'pos',flow:'both'});
+  syncUI();
+}
+function setInner(id,k,v){ snapshot(); const o=(state.eco.inner||[]).find(x=>x.id===id); if(o) o[k]=v; syncUI(); }
+function renderInnerList(){
+  const box=document.getElementById('innerList'); if(!box) return;
+  const ps=centerPersons(), list=state.eco.inner||[];
+  const op=(v)=>`<option value="">— 選成員 —</option>`+ps.map(q=>`<option value="${q.id}" ${v===q.id?'selected':''}>${esc(label(q))}</option>`).join('');
+  if(!ps.length){ box.innerHTML='<div class="empty">中心家庭還沒有成員。先在上方填成員，或按「從家系圖帶入中心家庭」。</div>'; return; }
+  box.innerHTML = list.length ? list.map((r,i)=>`
+    <div class="row">
+      <div class="top pair">
+        <span class="idx">${i+1}</span>
+        <select class="f-mem" style="flex:1" onchange="setInner('${r.id}','a',this.value)">${op(r.a)}</select>
+        <select class="f-mem" style="flex:1" onchange="setInner('${r.id}','b',this.value)">${op(r.b)}</select>
+        <button class="del" onclick="del(state.eco.inner,'${r.id}')">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <select onchange="setInner('${r.id}','type',this.value)">
+          ${Object.entries(INNER_TYPES).map(([k,v])=>`<option value="${k}" ${r.type===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+        <select onchange="setInner('${r.id}','flow',this.value)">
+          <option value="both" ${r.flow==='both'?'selected':''}>箭頭：雙向</option>
+          <option value="ab" ${r.flow==='ab'?'selected':''}>箭頭：左→右</option>
+          <option value="ba" ${r.flow==='ba'?'selected':''}>箭頭：右→左</option>
+          <option value="none" ${r.flow==='none'?'selected':''}>箭頭：無</option>
+        </select>
+      </div>
+      ${(!r.a||!r.b||r.a===r.b)?'<div class="warn">↑ 請選兩位不同的成員，線才會出現</div>':''}
+    </div>`).join('') : '<div class="empty">尚未建立成員之間的關係</div>';
 }
 function setU(id,k,v){
   snapshot();
@@ -1455,6 +1501,7 @@ function removePerson(id){
   if(i>-1) state.geno.persons.splice(i,1);
   state.geno.unions.forEach(u=>{u.children=u.children.filter(c=>c.id!==id);});
   state.geno.unions=state.geno.unions.filter(u=>P(u.a)&&P(u.b));
+  if(state.eco.inner) state.eco.inner=state.eco.inner.filter(r=>P(r.a)&&P(r.b));   // 圓內成員關係一併清掉
   state.geno.ties=state.geno.ties.filter(t=>P(t.a)&&P(t.b));
   state.geno.circles.forEach(c=>{c.members=c.members.filter(m=>m!==id);});
   syncUI();
@@ -1574,6 +1621,10 @@ function zig(x1,y1,x2,y2,o={}){
     line({x1:pr[0],y1:pr[1],x2:cu[0],y2:cu[1],stroke:o.stroke||INK,sw:o.sw||2});
     pr=cu;
   }
+}
+function barMid(x1,y1,x2,y2,o={}){        // 關係阻斷：線中央加一道垂直短槓
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,px=-dy/len*9,py=dx/len*9,mx=(x1+x2)/2,my=(y1+y2)/2;
+  line({x1:mx-px,y1:my-py,x2:mx+px,y2:my+py,sw:o.sw||2.6,stroke:o.stroke||INK});
 }
 function hatch(x1,y1,x2,y2,o={}){          // 關係惡化：線上加多個小斜線
   line({x1,y1,x2,y2,sw:1.6,stroke:o.stroke||INK});
@@ -1949,7 +2000,8 @@ function setEcoMode(m){
   const sc=document.getElementById('secEcoCenter'); if(sc) sc.style.display = m==='simple'?'':'none';
   const fo=document.getElementById('ecoFullOpts'); if(fo) fo.style.display = m==='full'?'flex':'none';
   const sl=document.getElementById('secLinks'); if(sl) sl.style.display = m==='network'?'':'none';
-  const gl=document.getElementById('secGenoLink'); if(gl) gl.style.display = m==='simple'?'':'none';   // 完整／網絡模式親屬已在圖上，不再重複列為系統
+  const gl=document.getElementById('secGenoLink'); if(gl) gl.style.display = m==='simple'?'':'none';
+  const si=document.getElementById('secInner'); if(si) si.style.display = m==='simple'?'':'none';   // 完整／網絡模式親屬已在圖上，不再重複列為系統
   const hint=document.getElementById('ecoModeHint');
   if(hint) hint.innerHTML = m==='network'
     ? '「自由網絡圖」：人與單位都可自由拖曳擺放，任兩者之間都能拉線、寫事件，適合保護性個案這類多單位、多事件的情境。'
@@ -2170,6 +2222,7 @@ function buildEcomapFull(){
         parallel(x1,y1,x2,y2,offs,{stroke:c,sw:s.strength==='weak'?1.6:2,dash:s.strength==='weak'?'7 5':null});
       }
       else line({x1,y1,x2,y2,sw,dash:s.strength==='weak'?'7 5':null,stroke:c});
+      if(s.strength==='cut') barMid(x1,y1,x2,y2,{stroke:c});
       if(s.flow!=='none'){
         const arrow=(ax,ay,bx,by)=>{ const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
           line({x1:bx,y1:by,x2:bx-ux*14+px*8,y2:by-uy*14+py*8,sw:2.4,stroke:c});
@@ -2192,31 +2245,58 @@ function buildEcomapFull(){
 }
 function buildEcomap(){
   const sys=state.eco.systems, n=Math.max(sys.length,1), col=C();
-  const CR=ECO.CR, SR=ECO.SR;
-  const R=Math.max(230,40*n+90)+(SR-62)*2.2, w=R*2+CR*3.3, h=R*2+CR*2.6, cx=w/2, cy=h/2;
+  const members=(state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,6);
+  const useIcons=document.getElementById('optCenterIcons')?.checked && members.length;
+  const inner=useIcons?(state.eco.inner||[]).filter(r=>r.a&&r.b&&r.a!==r.b):[];
+  /* 有成員之間的關係時，中心圓與成員符號放大，線才畫得下 */
+  const big=inner.length>0;
+  const SZ=big?32:22, anyT=sys.some(s=>(s.targets||[]).length);
+  const GAP=big?124:(anyT?46:36), RG=big?110:44;
+  const perRow=members.length>3?Math.ceil(members.length/2):members.length;
+  const rows=Math.ceil(members.length/(perRow||1));
+  const SR=ECO.SR;
+  const CR=Math.max(ECO.CR, big?Math.max(((perRow||1)-1)/2*GAP+SZ/2+44, ((rows-1)/2)*RG+SZ+58):0);
+  const R=Math.max(230,40*n+90,CR+SR+90)+(SR-62)*2.2;
+  /* 畫布大小以標準圓計算：放大中心圓時中心點不移動，已手動擺放的系統位置不會跑掉 */
+  const w=R*2+Math.max(ECO.CR*3.3,CR*2+SR*2+40), h=R*2+Math.max(ECO.CR*2.6,CR*2+SR*2+40), cx=w/2, cy=h/2;
   sys.forEach((s,i)=>{ if(!s.pinned){
     const ang=-Math.PI/2+i*2*Math.PI/n;
     s.x=cx+R*Math.cos(ang); s.y=cy+R*Math.sin(ang);
   }});
-  const members=(state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,6);
-  const useIcons=document.getElementById('optCenterIcons')?.checked && members.length;
+  /* 手動擺放的系統若壓到中心圓，往外推到圓外 */
+  sys.forEach(s=>{ if(!s.pinned) return;
+    const dx=s.x-cx, dy=s.y-cy, d=Math.hypot(dx,dy)||1, min=CR+SR+28;
+    if(d<min){ s.x=cx+dx/d*min; s.y=cy+dy/d*min; } });
   /* 圓內成員符號的位置（先算好，連到個別成員的線要用） */
-  const anyT=sys.some(s=>(s.targets||[]).length);
-  const SZ=22, GAP=anyT?46:36, perRow=members.length>3?Math.ceil(members.length/2):members.length;
-  const rows=Math.ceil(members.length/(perRow||1));
   const mpos={};   // 成員 id → 圓內位置
   const icons=members.map((nm,i)=>{
     const r=Math.floor(i/perRow), c=i%perRow, nn=Math.min(perRow,members.length-r*perRow);
-    const x=cx+(c-(nn-1)/2)*GAP, y=cy-CR*0.08+(r-(rows-1)/2)*44;
+    const x=cx+(c-(nn-1)/2)*GAP, y=cy+(big?12:-CR*0.08)+(r-(rows-1)/2)*RG;
     const per=state.geno.persons.find(q=>label(q)===nm);
     if(per) mpos[per.id]={x,y};
     return {nm,x,y,per};
   });
+  const arrowHead=(ax,ay,bx,by,c)=>{
+    const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
+    line({x1:bx,y1:by,x2:bx-ux*12+px*7,y2:by-uy*12+py*7,sw:2.2,stroke:c});
+    line({x1:bx,y1:by,x2:bx-ux*12-px*7,y2:by-uy*12-py*7,sw:2.2,stroke:c});
+  };
+  /* 成員之間的線：正向＝細實線、強烈＝粗線、負向＝虛線、緊張＝鋸齒、阻斷＝中央短槓 */
+  const relLine=(pts,type,flow)=>{     // pts：折線點（直線就是兩點；繞過其他成員時是弧線）
+    const c=type==='tension'?col.stress:col.tie, n=pts.length-1;
+    for(let i=0;i<n;i++){ const [a,b]=pts[i],[d,e]=pts[i+1];
+      if(type==='tension') zig(a,b,d,e,{amp:n>1?3.5:5,sw:2,stroke:c});
+      else line({x1:a,y1:b,x2:d,y2:e,sw:type==='strong'?4.5:2,dash:type==='neg'?(n>1?'4 3':'7 5'):null,stroke:c}); }
+    if(type==='cut'){ const k=Math.floor(n/2), [a,b]=pts[k], [d,e]=pts[k+1]; barMid(a,b,d,e,{stroke:c}); }
+    if(flow==='both'||flow==='ba') arrowHead(pts[1][0],pts[1][1],pts[0][0],pts[0][1],c);
+    if(flow==='both'||flow==='ab') arrowHead(pts[n-1][0],pts[n-1][1],pts[n][0],pts[n][1],c);
+  };
   const linkTo=(s,x1,y1,x2,y2)=>{
     const sw=s.strength==='strong'?5:s.strength==='weak'?1.6:2.6;
     const c=s.stress?col.stress:col.tie;
     s.stress ? zig(x1,y1,x2,y2,{amp:6,sw,stroke:c})
              : line({x1,y1,x2,y2,sw,dash:s.strength==='weak'?'7 5':null,stroke:c});
+    if(s.strength==='cut') barMid(x1,y1,x2,y2,{stroke:c});
     if(s.flow!=='none'){
       const arrow=(ax,ay,bx,by)=>{
         const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
@@ -2241,7 +2321,19 @@ function buildEcomap(){
     /* 連到個別成員的線畫在圓上面，從成員符號直接拉到系統 */
     sys.forEach(s=>memberTargets(s).forEach(pid=>{ const m=mpos[pid];
       const [x1,y1,x2,y2]=trim(m.x,m.y,s.x,s.y,SZ/2+3,SR+2); linkTo(s,x1,y1,x2,y2); }));
-    text({cx,cy:cy-CR*0.62,w:CR*1.8,h:20,t:state.eco.center||'個案家庭',size:14,bold:true});
+    inner.forEach((r,ri)=>{ const A=mpos[r.a], B=mpos[r.b]; if(!A||!B) return;
+      /* 兩人之間若有別的成員擋住，改畫成往上（或往下）彎的弧線，不穿過那個人 */
+      const dx=B.x-A.x, dy=B.y-A.y, L=Math.hypot(dx,dy)||1;
+      const blocked=Object.entries(mpos).some(([pid,m])=>{ if(pid===r.a||pid===r.b) return false;
+        const t=((m.x-A.x)*dx+(m.y-A.y)*dy)/(L*L); if(t<=0||t>=1) return false;
+        return Math.abs((m.x-A.x)*dy-(m.y-A.y)*dx)/L < SZ; });
+      if(!blocked){ const [x1,y1,x2,y2]=trim(A.x,A.y,B.x,B.y,SZ/2+4,SZ/2+4); relLine([[x1,y1],[x2,y2]],r.type,r.flow); return; }
+      const nx=-dy/L, ny=dx/L, down=rows>1&&A.y>cy+5, bend=Math.min(70,L*0.35)*(ny>0?-1:1)*(down?-1:1);   // 上排往上彎、下排往下彎
+      const qx=(A.x+B.x)/2+nx*bend*2, qy=(A.y+B.y)/2+ny*bend*2, pts=[];
+      for(let i=0;i<=14;i++){ const t=i/14, u=1-t; pts.push([u*u*A.x+2*u*t*qx+t*t*B.x, u*u*A.y+2*u*t*qy+t*t*B.y]); }
+      const cut=p=>Math.hypot(p[0]-A.x,p[1]-A.y)>SZ/2+4 && Math.hypot(p[0]-B.x,p[1]-B.y)>SZ/2+4;
+      relLine(pts.filter(cut),r.type,r.flow); });
+    text({cx,cy:cy-CR*(big?0.72:0.62),w:CR*1.8,h:20,t:state.eco.center||'個案家庭',size:14,bold:true});
     const idxStyleE=(document.getElementById('optIndex')?.value)||'shade';
     icons.forEach(({nm,x,y,per})=>{
       const g=per?per.gender:'unknown', isIdx=!!per?.index;
@@ -2252,8 +2344,8 @@ function buildEcomap(){
       if(isIdx&&idxStyleE==='double') shape({shape:shp,x:x-SZ/2+3,y:y-SZ/2+3,w:SZ-6,h:SZ-6,sw:1.2,stroke:INK});
       if(per?.dead){ line({x1:x-SZ/2,y1:y-SZ/2,x2:x+SZ/2,y2:y+SZ/2,sw:1.4}); line({x1:x+SZ/2,y1:y-SZ/2,x2:x-SZ/2,y2:y+SZ/2,sw:1.4}); }
       const lw=nm.length*10*FS()+6;
-      if(anyT) shape({shape:'rect',x:x-lw/2,y:y+SZ/2+9*FS()-7*FS(),w:lw,h:14*FS(),sw:0,stroke:'#ffffff',fill:'#ffffff'});   // 線經過時名字仍清楚
-      text({cx:x,cy:y+SZ/2+9*FS(),w:GAP*FS(),h:14,t:nm,size:10,color:'#41504e',bold:isIdx});
+      if(anyT||big) shape({shape:'rect',x:x-lw/2,y:y+SZ/2+9*FS()-7*FS(),w:lw,h:14*FS(),sw:0,stroke:'#ffffff',fill:'#ffffff'});   // 線經過時名字仍清楚
+      text({cx:x,cy:y+SZ/2+9*FS(),w:GAP*FS(),h:14,t:nm,size:big?12:10,color:'#41504e',bold:isIdx});
     });
   }
   sys.forEach(s=>{
@@ -2276,7 +2368,7 @@ const legendItems=()=>(state.mode==='ecomap'&&ecoMode==='network') ? NET_LEGEND 
      ['thin',TIE_LABEL.positive],['thick',TIE_LABEL.close],['fused',TIE_LABEL.fused],
      ['zig',TIE_LABEL.conflict],['closezig',TIE_LABEL.closeconflict],['hatch',TIE_LABEL.worsening],
      ['cut',TIE_LABEL.cutoff],['dot',TIE_LABEL.distant],['ring','生活圈']]
-  : [['bold','連結強'],['thin','一般'],['dash','薄弱'],['zig','壓力／衝突'],['arrow','能量流向']];
+  : [['bold','強烈／連結強'],['thin','正向／一般'],['dash','負向／薄弱'],['zig','緊張／壓力衝突'],['barcut','關係阻斷'],['arrow','流向']];
 function legendMetrics(w){
   const n=legendItems().length, perRow=Math.max(1,Math.floor((w-40)/LGw()));
   return {perRow,rows:Math.ceil(n/perRow),h:Math.ceil(n/perRow)*LRh()+22};
@@ -2318,6 +2410,7 @@ function legend(w,top){
     else if(k==='dashdot') line({x1:x,y1:y,x2:x+26,y2:y,sw:2,dash:'8 3 2 3',stroke:INK});
     else if(k==='dbl') parallel(x,y,x+26,y,[-3,3],{stroke:INK,sw:2});
     else if(k==='hatch') hatch(x,y,x+26,y,{stroke:col.stress});
+    else if(k==='barcut'){ line({x1:x,y1:y,x2:x+26,y2:y,sw:2,stroke:col.tie}); barMid(x,y,x+26,y,{stroke:col.tie}); }
     else if(k==='cut'){ line({x1:x,y1:y,x2:x+9,y2:y,sw:1.6}); line({x1:x+17,y1:y,x2:x+26,y2:y,sw:1.6});
                         [9,17].forEach(o=>line({x1:x+o,y1:y-6,x2:x+o,y2:y+6,sw:1.6})); }
     else if(k==='ring') shape({shape:'ellipse',x,y:y-8,w:26,h:16,sw:1.5,stroke:col.ring});
@@ -3240,7 +3333,7 @@ function pick(v,L){ return (v&&typeof v==='object'&&!Array.isArray(v)&&('d' in v
 
 /* ---------- 版面：電腦 16:9、手機 9:16 ---------- */
 const LAYOUTS={
-  d:{k:'d',W:1600,H:900,f:{tx:28,ty:84,s:1.16},c:{tx:690,ty:108,s:1.1},fs:1},
+  d:{k:'d',W:1600,H:900,f:{tx:28,ty:84,s:1.16},c:{tx:690,ty:132,s:1.1},fs:1},
   m:{k:'m',W:900,H:1600,f:{tx:73,ty:120,s:1.45},c:{tx:50,ty:880,s:1.0},fs:1.45}
 };
 /* 影片裡的標題列：要和網站真實標題列一致（改網站按鈕時記得一起改這裡） */
@@ -3503,7 +3596,9 @@ function chrome(S,o={}){
     E('rect',{x:661,y:hdrH,width:L.W-661,height:L.H-hdrH,fill:'url(#tutGrid)'},R);
     const tb=E('text',{x:690,y:hdrH+22,'font-size':15,fill:C.muted,'dominant-baseline':'central','font-family':FONT},R,
       '↶ 復原　↷ 取消復原　│　重新自動排版　☑ 長幼排序　☐ 附圖例　☐ 彩色標示　☐ 透明背景　字體：標準 ▾');
-    E('text',{x:L.W-24,y:hdrH+22,'font-size':15,fill:C.muted,'text-anchor':'end','dominant-baseline':'central','font-family':FONT},R,'檢視 － 100% ＋ 符合');
+    /* 工具列第二行（與網站相同：案主標示、檢視縮放） */
+    E('text',{x:690,y:hdrH+50,'font-size':15,fill:C.muted,'dominant-baseline':'central','font-family':FONT},R,'案主：灰底（教科書標準） ▾');
+    E('text',{x:L.W-24,y:hdrH+50,'font-size':15,fill:C.muted,'text-anchor':'end','dominant-baseline':'central','font-family':FONT},R,'檢視 － 100% ＋ 符合');
   } else {
     E('rect',{x:600,y:26,width:126,height:48,rx:8,fill:'transparent',stroke:C.amber},R);
     E('text',{x:663,y:50,'font-size':24,fill:'#ffe2b0','text-anchor':'middle','dominant-baseline':'central','font-family':FONT},R,'▶ 教學');
@@ -4000,7 +4095,186 @@ CH.push({title:'生態圖',sub:'盤點正式與非正式資源',dur:26,
   tryIt(){ if(isMob()&&typeof mobPane==='function') mobPane('edit'); coach('#tabE','切到「生態圖」，在「外部系統」按「＋ 新增系統」開始'); }
 });
 
-/* ---------- 5. 匯出 ---------- */
+/* ---------- 5. 字體與生態圖連線（新功能） ---------- */
+CH.push({title:'字體與生態圖連線',sub:'放大字體、連到個別成員、家人之間畫線',dur:33,
+  caps:[[0,'圖上的字太小？工具列的「字體」可以放大'],
+    [1.8,{d:'選「大」或「特大」，名字、年齡、系統名稱一起放大',m:'手機版在「⚙ 設定」裡；名字、年齡、系統名稱一起放大'}],
+    [5.4,'下載的 PPTX／Word／PNG／SVG 也會套用，存檔時一併記住'],
+    [9.0,'生態圖切到「簡化：一個圓」，中心圓會用符號顯示家人'],
+    [12.4,'外部系統下方的「連到成員」點選小明，線就從小明拉到學校'],
+    [17.6,'家人之間也能畫線：到「圓內成員之間的關係」按「＋ 新增成員關係」'],
+    [20.6,'選兩位成員、關係種類與箭頭方向；中心圓會自動放大'],
+    [27.6,'五種線與課本一致：正向、強烈、負向（虛線）、緊張（鋸齒）、關係阻斷']],
+  build(S){
+    const L=S.L, isD=L.k==='d', u=UI(S.gForm);
+    u.tabs(S,9.2);
+    /* ---- A. 字體 ---- */
+    const gg=E('g',{},S.gForm); S.vis(gg,null,9.3,{fade:.15});
+    u.pills(S,54,['表格','關係矩陣','貼逐字稿'],[[0,0]],{p:gg});
+    collapsedSecs(S,u,[['成員',4],['婚姻／伴侶關係',1],['情感關係',2],['生活圈（同住／關係密切）',1]],gg);
+    const zg=zoomG(S), G=Geno(S,zg); baseFamily(S,G,{out:9.3});
+    const FK=t=>lerp(1,1.4,prog(t,3.1,.6));
+    const texts=[...zg.querySelectorAll('text')].map(el=>[el,+el.getAttribute('font-size')]);
+    S.fn(t=>{const k=FK(t); texts.forEach(([el,b])=>el.setAttribute('font-size',b*k));});
+    /* 字體選單位置：電腦在工具列；手機在畫布上方的「⚙ 設定」裡 */
+    let fx,fy,fw,ffs;
+    const fm=E('g',{},S.gTop);
+    if(isD){
+      const pre='↶ 復原　↷ 取消復原　│　重新自動排版　☑ 長幼排序　☐ 附圖例　☐ 彩色標示　☐ 透明背景　';
+      ffs=15; fx=690+tw(pre,15)-6; fy=86; fw=tw('字體：特大 ▾',15)+12;
+    } else {
+      ffs=24; const c0=S.Cv(14,10);
+      E('rect',{x:c0.x,y:c0.y,width:130,height:44,rx:8,fill:'#fff',stroke:C.line},fm);
+      E('text',{x:c0.x+65,y:c0.y+22,'font-size':22,fill:C.ink,'text-anchor':'middle','dominant-baseline':'central','font-family':FONT},fm,'⚙ 設定');
+      S.click(1.0,{x:c0.x+65,y:c0.y+22});
+      fx=c0.x+150; fy=c0.y+22; fw=tw('字體：特大 ▾',24)+20;
+    }
+    const fsel=E('g',{},fm); if(!isD) S.fn(t=>show(fsel,t>=1.3?1:0));
+    E('rect',{x:fx,y:fy-ffs*.9,width:fw,height:ffs*1.8,rx:5,fill:'#fff',stroke:C.line},fsel);
+    const ft=E('text',{x:fx+8,y:fy,'font-size':ffs,fill:C.text,'dominant-baseline':'central','font-family':FONT},fsel,'字體：標準 ▾');
+    S.fn(t=>{ft.textContent=t>=3.0?'字體：特大 ▾':'字體：標準 ▾'; show(fm,t<9.3?1:0);});
+    const dd=E('g',{},S.gTop); S.fn(t=>show(dd,t>=2.15&&t<3.0?1:0));
+    const oh=ffs*1.9;
+    E('rect',{x:fx,y:fy+ffs,width:fw+20,height:oh*3+8,rx:6,fill:'#fff',stroke:C.line,filter:'url(#tutShadow)'},dd);
+    const dhl=E('rect',{x:fx+4,y:fy+ffs+4,width:fw+12,height:oh,rx:4,fill:C.tealSoft},dd);
+    S.fn(t=>dhl.setAttribute('y',fy+ffs+4+oh*Math.round(lerp(0,2,clamp((t-2.3)/.5)))));
+    ['字體：標準','字體：大','字體：特大'].forEach((o,i)=>E('text',{x:fx+12,y:fy+ffs+4+oh*i+oh/2,'font-size':ffs,fill:C.text,'dominant-baseline':'central','font-family':FONT},dd,o));
+    S.click(2.0,{x:fx+fw/2,y:fy}); S.click(2.9,{x:fx+fw/2,y:fy+ffs+4+oh*2.5});
+    S.go(6.0,S.Cv(560,260)); S.go(8.4,S.Cv(600,280));
+    /* ---- B. 生態圖：簡化模式、連到成員 ---- */
+    S.clickF(9.1,390,22);
+    const eg=E('g',{},S.gForm); S.vis(eg,9.35,null,{fade:.2});
+    u.pills(S,54,['簡化：一個圓','完整家系生態圖','自由網絡圖'],[[0,2],[10.3,0]],{p:eg});
+    const h1=u.text(14,98,'',{p:eg,fs:12,fill:'#41504e'});
+    S.fn(t=>{h1.textContent=t>=10.3?'「簡化」把家庭畫成一個圓，外部系統環繞；最常見的生態圖形式。':'「自由網絡圖」：人與單位都可自由拖曳擺放，任兩者之間都能拉線、寫事件。';});
+    S.clickF(10.2,67,68);
+    const clp=E('clipPath',{id:'tutC5Clip'},S.defs); E('rect',{x:0,y:116,width:520,height:3000},clp);
+    const scw=E('g',{'clip-path':'url(#tutC5Clip)'},eg);
+    const sc=E('g',{},scw); S.vis(sc,10.4);
+    /* 版面（虛擬座標），內容高度會隨新增的成員關係變長 */
+    const nI=t=>(t>=19.5?1:0)+(t>=24.0?1:0), RH=92;
+    const yI=300, innerH=t=>nI(t)?nI(t)*RH:34;
+    const yG=t=>yI+30+innerH(t)+70, yS=t=>yG(t)+96;
+    const scrollAt=t=>{ const tB=yS(12)-150, tC=yI-150;
+      return lerp(0,tB,prog(t,11.0,.6))+(tC-tB)*prog(t,17.8,.6)+(yS(t)-yS(19))*0*prog(t,99,1); };
+    S.fn(t=>sc.setAttribute('transform',`translate(0,${-scrollAt(t)})`));
+    /* 中心家庭 */
+    u.sec(S,130,'中心家庭','',true,{p:sc});
+    u.field(14,150,492,'小明家庭',{p:sc}); u.field(14,186,492,'母、小明、妹',{p:sc});
+    u.btn(14,224,'↙ 從家系圖帶入中心家庭',{p:sc,fw:400,fs:12});
+    const ic=u.check(196,238,'中心圓用符號顯示成員',{p:sc,fs:12}); ic.set(true);
+    u.text(14,272,'會取家系圖的案主與「生活圈」同住成員；帶入後可自行修改。',{p:sc,fs:11.5,fill:C.muted});
+    /* 圓內成員之間的關係 */
+    u.sec(S,yI,'圓內成員之間的關係','',true,{p:sc});
+    const ie=u.text(26,yI+40,'尚未建立成員之間的關係',{p:sc,fs:12.5,fill:C.muted}); S.fn(t=>show(ie,nI(t)?0:1));
+    const ROWS=[[19.5,'母','小明',[[0,'正向關係'],[22.3,'緊張關係（鋸齒）']]],[24.0,'母','小明',[[0,'正向關係']],[[0,'小明'],[25.4,'妹']]]];
+    ROWS.forEach(([ti,a,b,types,bvals],i)=>{
+      const g=E('g',{},sc), y0=yI+22+i*RH; S.vis(g,ti,null,{dy:-6});
+      u.rect(14,y0,492,RH-8,{p:g,fill:C.card,stroke:'#e6e1d8',rx:8});
+      E('circle',{cx:30,cy:y0+22,r:10,fill:C.teal},g); u.text(30,y0+22,String(i+1),{p:g,anchor:'middle',fs:11,fw:700,fill:'#fff'});
+      u.select(46,y0+7,204,a,{p:g}); const sb=u.select(258,y0+7,204,b,{p:g}); if(bvals) S.val(sb.t,bvals);
+      u.text(488,y0+22,'✕',{p:g,fs:15,fill:'#c25a3c',anchor:'middle'});
+      const ts=u.select(26,y0+44,232,types[0][1],{p:g}); S.val(ts.t,types);
+      u.select(266,y0+44,190,'箭頭：雙向',{p:g});
+    });
+    /* 類型下拉 */
+    const IT=['正向關係','強烈關係','負向關係（虛線）','緊張關係（鋸齒）','關係阻斷'];
+    const tdd=E('g',{},sc); S.fn(t=>show(tdd,t>=21.6&&t<22.3?1:0));
+    const ty0=yI+22+44+32;
+    u.rect(26,ty0,232,IT.length*26+8,{p:tdd,fill:'#fff',stroke:C.line,a:{filter:'url(#tutShadow)'}});
+    const thl=u.rect(30,ty0+4,224,24,{p:tdd,fill:C.tealSoft,stroke:'none',rx:4});
+    IT.forEach((x,i)=>u.text(38,ty0+16+i*26,x,{p:tdd,fs:12.5}));
+    S.fn(t=>thl.setAttribute('y',ty0+4+26*Math.round(lerp(0,3,clamp((t-21.7)/.5)))));
+    /* 第二列成員下拉 */
+    const mdd=E('g',{},sc); S.fn(t=>show(mdd,t>=24.8&&t<25.4?1:0));
+    const my0=yI+22+RH+7+32;
+    u.rect(258,my0,204,4*26+8,{p:mdd,fill:'#fff',stroke:C.line,a:{filter:'url(#tutShadow)'}});
+    const mhl=u.rect(262,my0+4,196,24,{p:mdd,fill:C.tealSoft,stroke:'none',rx:4});
+    ['— 選成員 —','母','小明','妹'].forEach((x,i)=>u.text(270,my0+16+i*26,x,{p:mdd,fs:12.5}));
+    S.fn(t=>mhl.setAttribute('y',my0+4+26*(t<25.1?2:3)));
+    const ib=u.btn(14,0,'＋ 新增成員關係',{p:sc});
+    S.fn(t=>ib.setAttribute('transform',`translate(0,${yI+22+innerH(t)+6})`));
+    u.text(14,0,'',{p:sc});
+    /* 未同住親屬、外部系統（隨上方內容往下移） */
+    const lower=E('g',{},sc); S.fn(t=>lower.setAttribute('transform',`translate(0,${yG(t)-yG(0)})`));
+    const G0=yG(0), S0=yS(0);
+    u.sec(S,G0,'未同住親屬 → 外部系統','',true,{p:lower});
+    const ck=u.check(14,G0+24,'自動把家系圖中未同住的親屬列為外部系統',{p:lower,fs:12}); ck.set(true);
+    u.text(14,G0+50,'父（45）　已列為外部系統',{p:lower,fs:13,fill:C.ink});
+    u.sec(S,S0,'外部系統','',true,{p:lower});
+    const sy=S0+18;
+    u.rect(14,sy,492,150,{p:lower,fill:C.card,stroke:'#e6e1d8',rx:8});
+    E('circle',{cx:30,cy:sy+22,r:10,fill:C.teal},lower); u.text(30,sy+22,'1',{p:lower,anchor:'middle',fs:11,fw:700,fill:'#fff'});
+    u.field(46,sy+7,410,'學校',{p:lower}); u.text(488,sy+22,'✕',{p:lower,fs:15,fill:'#c25a3c',anchor:'middle'});
+    u.select(26,sy+42,232,'連結：一般',{p:lower}); u.select(266,sy+42,190,'能量：不標示',{p:lower});
+    u.check(26,sy+86,'此連結帶來壓力／衝突',{p:lower,fs:12});
+    u.text(26,sy+108,'連到成員（不選＝連到整個家庭）',{p:lower,fs:11.5,fill:C.muted});
+    let cx0=26; const chips=['母','小明','妹'].map(n=>{const c=u.chip(cx0,sy+118,n,{p:lower}); cx0+=c.w+8; return c;});
+    S.fn(t=>chips.forEach((c,i)=>c.set(i===1&&t>=14.9)));
+    S.clickF(14.8,chips[1].cx,chips[1].cy+(yG(14)-yG(0))-scrollAt(14.8));
+    /* 游標：成員關係 */
+    const rowY=i=>yI+22+i*RH;
+    S.clickF(19.3,ib.cx,yI+22+34+6+14-scrollAt(19.3));
+    S.clickF(21.5,140,rowY(0)+59-scrollAt(21.5)); S.clickF(22.2,140,ty0+16+3*26-scrollAt(22.2));
+    S.clickF(23.9,ib.cx,yI+22+RH+6+14-scrollAt(23.9));
+    S.clickF(24.7,360,rowY(1)+22-scrollAt(24.7)); S.clickF(25.3,360,my0+16+3*26-scrollAt(25.3));
+    /* ---- 畫布：簡化生態圖 ---- */
+    const cv=E('g',{},S.gCanvas); S.vis(cv,10.5);
+    const ctr={x:400,y:290}, BIG=t=>prog(t,19.7,.7);
+    const CRt=t=>lerp(96,150,BIG(t));
+    const SZt=t=>lerp(22,32,BIG(t));
+    const mem=[['f','母'],['m','小明',1],['f','妹']];
+    const mp=(i,t)=>{const gap=lerp(t>=15.2?46:36,118,BIG(t)); return {x:ctr.x+(i-1)*gap,y:ctr.y+lerp(-8,14,BIG(t))};};
+    const SYS=[['學校',400,62],['社福中心',690,250],['醫院',110,250],['父（未同住）',630,490]];
+    const under=E('g',{},cv), circ=E('circle',{cx:ctr.x,cy:ctr.y,fill:'#fff',stroke:C.ink,'stroke-width':2.8},cv);
+    const over=E('g',{},cv), icons=E('g',{},cv), sysg=E('g',{},cv);
+    const ttl=E('text',{x:ctr.x,'text-anchor':'middle','font-size':15,'font-weight':700,fill:C.ink,'font-family':FONT},cv,'小明家庭');
+    S.fn(t=>{circ.setAttribute('r',CRt(t)); ttl.setAttribute('y',ctr.y-CRt(t)*.62);});
+    const trimL=(x1,y1,x2,y2,r1,r2)=>{const dx=x2-x1,dy=y2-y1,l=Math.hypot(dx,dy)||1; return [x1+dx/l*r1,y1+dy/l*r1,x2-dx/l*r2,y2-dy/l*r2];};
+    SYS.forEach(([n,x,y],i)=>{
+      const p=E('path',{fill:'none',stroke:C.ink,'stroke-width':2.2},under);
+      S.fn(t=>{const [a,b,c,d]=trimL(ctr.x,ctr.y,x,y,CRt(t)+2,52); p.setAttribute('d',`M${a},${b} L${c},${d}`); show(p,(i===0&&t>=15.2)?0:1);});
+      E('circle',{cx:x,cy:y,r:50,fill:'#fff',stroke:C.ink,'stroke-width':2},sysg);
+      E('text',{x,y,'text-anchor':'middle','dominant-baseline':'central','font-size':n.length>3?13:15,'font-weight':700,fill:C.ink,'font-family':FONT},sysg,n);
+    });
+    const sl=E('path',{fill:'none',stroke:C.ink,'stroke-width':2.2},over);
+    S.fn(t=>{const m=mp(1,t),[a,b,c,d]=trimL(m.x,m.y,400,62,SZt(t)/2+3,52); sl.setAttribute('d',`M${a},${b} L${c},${d}`); show(sl,t>=15.2?1:0);});
+    mem.forEach(([sx,n,cl],i)=>{
+      const g=E('g',{},icons), sh=sx==='m'?E('rect',{fill:cl?C.client:'#fff',stroke:C.ink,'stroke-width':2},g):E('circle',{fill:'#fff',stroke:C.ink,'stroke-width':2},g);
+      const lb=E('text',{'text-anchor':'middle','font-size':12,fill:C.text,'font-family':FONT,stroke:'#fff','stroke-width':4,'paint-order':'stroke'},g,n);
+      S.fn(t=>{const m=mp(i,t), z=SZt(t);
+        if(sx==='m'){sh.setAttribute('x',m.x-z/2);sh.setAttribute('y',m.y-z/2);sh.setAttribute('width',z);sh.setAttribute('height',z);}
+        else {sh.setAttribute('cx',m.x);sh.setAttribute('cy',m.y);sh.setAttribute('r',z/2);}
+        lb.setAttribute('x',m.x); lb.setAttribute('y',m.y+z/2+15);});
+    });
+    /* 成員之間的線 */
+    const head=(ax,ay,bx,by)=>{const dx=bx-ax,dy=by-ay,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l,px=-uy,py=ux; return ` M${bx-ux*11+px*6},${by-uy*11+py*6} L${bx},${by} L${bx-ux*11-px*6},${by-uy*11-py*6}`;};
+    const zigP=(x1,y1,x2,y2)=>{const dx=x2-x1,dy=y2-y1,l=Math.hypot(dx,dy)||1,px=-dy/l,py=dx/l,n=Math.max(4,Math.round(l/12)); let d=`M${x1},${y1}`;
+      for(let i=1;i<=n;i++){const f=i/n,a=i===n?0:(i%2?5:-5); d+=` L${x1+dx*f+px*a},${y1+dy*f+py*a}`;} return d;};
+    const r1=E('path',{fill:'none','stroke-width':2.2,'stroke-linejoin':'round'},over), r2=E('path',{fill:'none',stroke:C.ink,'stroke-width':2.2},over);
+    S.fn(t=>{const A=mp(0,t),B=mp(1,t),z=SZt(t)/2+5,[a,b,c,d]=trimL(A.x,A.y,B.x,B.y,z,z), zz=t>=22.3;
+      r1.setAttribute('d',(zz?zigP(a,b,c,d):`M${a},${b} L${c},${d}`)+head(c,d,a,b)+head(a,b,c,d));
+      r1.setAttribute('stroke',zz?C.orange:C.ink); show(r1,t>=19.6?1:0);
+      const M=mp(2,t),[e,f,g2,h]=trimL(A.x,A.y,M.x,M.y,z,z);
+      const mid=(A.y+M.y)/2-40;   // 母與妹之間的線略往上彎，避開小明
+      r2.setAttribute('d',`M${e},${f} Q${(A.x+M.x)/2},${mid} ${g2},${h}`+head((A.x+M.x)/2,mid,g2,h)+head((A.x+M.x)/2,mid,e,f));
+      show(r2,t>=25.5?1:0);});
+    /* 圖例（附圖例） */
+    const lg=E('g',{},cv); S.vis(lg,27.6);
+    const LG=[['正向',0],['強烈',1],['負向',2],['緊張',3],['阻斷',4]];
+    E('line',{x1:40,y1:532,x2:760,y2:532,stroke:'#d7d2c8'},lg);
+    LG.forEach(([n,k],i)=>{const x=60+i*140,y=548;
+      const st={stroke:k===3?C.orange:C.ink,'stroke-width':k===1?4.5:2,fill:'none'};
+      if(k===3) E('path',Object.assign({d:zigP(x,y,x+34,y)},st),lg);
+      else E('line',Object.assign({x1:x,y1:y,x2:x+34,y2:y,'stroke-dasharray':k===2?'6 4':null},st),lg);
+      if(k===4) E('line',{x1:x+17,y1:y-8,x2:x+17,y2:y+8,stroke:C.ink,'stroke-width':2.4},lg);
+      E('text',{x:x+44,y,'font-size':14,fill:C.text,'dominant-baseline':'central','font-family':FONT},lg,n+'關係');});
+    S.go(28,S.Cv(600,300)); S.go(32,S.Cv(610,305));
+  },
+  tryIt(){ if(isMob()&&typeof mobPane==='function') mobPane('edit'); coach('#tabE','切到「生態圖」→「簡化：一個圓」，在「圓內成員之間的關係」按「＋ 新增成員關係」'); }
+});
+
+/* ---------- 6. 匯出 ---------- */
 CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
   caps:[[0,'畫好了，放進紀錄或簡報'],
     [1.6,'「下載 ▾」→「PPTX（可編輯）」：每個人物、每條線都是原生圖形'],
@@ -4083,7 +4357,7 @@ CH.push({title:'匯出 Word／PPT',sub:'放進紀錄、報告與簡報',dur:25,
   tryIt(){ if(isMob()) openHdr(); coach('#dlBtn','按「下載 ▾」→「PPTX（可編輯）」，用 PowerPoint 開啟即可修改'); }
 });
 
-/* ---------- 6. 存檔與續編 ---------- */
+/* ---------- 7. 存檔與續編 ---------- */
 CH.push({title:'存檔與續編',sub:'每位個案存成一個檔，日後再改',dur:26,
   caps:[[0,'每位個案都能存成一個檔案，日後再打開繼續修改'],
     [1.6,'① 按上方「存檔 JSON」，會先詢問檔案名稱'],
@@ -4182,7 +4456,7 @@ CH.push({title:'存檔與續編',sub:'每位個案存成一個檔，日後再改
   tryIt(){ if(isMob()) openHdr(); coach('[onclick^="saveJSON"]','按「存檔 JSON」，輸入檔名（建議用個案代號）後儲存；下次按「開啟 JSON」繼續改'); }
 });
 
-/* ---------- 7. 實務應用設計 ---------- */
+/* ---------- 8. 實務應用設計 ---------- */
 CH.push({title:'實務應用',sub:'從會談到紀錄的一條龍',dur:28,noCursor:1,
   caps:[[0,'實務上怎麼用？從會談到紀錄，一條龍完成'],
     [1.6,'會談蒐集 → 建圖 → 標示關係 → 盤點資源 → 放進紀錄'],
@@ -4505,14 +4779,14 @@ function markSeen(){try{localStorage.setItem(SEEN,'1');}catch(e){}}
 function init(){
   injectCSS(); selfCheck();
   const hb=document.createElement('button'); hb.className='btn ghost tut-hbtn'; hb.type='button';
-  hb.innerHTML='▶ 教學<span class="tut-long">影片</span>'; hb.title='觀看操作教學動畫（約 3 分鐘）';
+  hb.innerHTML='▶ 教學<span class="tut-long">影片</span>'; hb.title='觀看操作教學動畫（約 3 分半）';
   hb.onclick=e=>{e.stopPropagation();openTut(0);};
   const st=document.createElement('style'); st.textContent='@media (max-width:900px){.tut-long{display:none}}'; document.head.appendChild(st);
   const anchor=document.getElementById('hdrMenuBtn')||document.querySelector('header .spacer');
   if(anchor) anchor.parentNode.insertBefore(hb,anchor); else document.body.appendChild(hb);
   if(!seen()){
     const f=document.createElement('div'); f.className='tut-fab';
-    f.innerHTML='<button class="go">▶ 第一次用？看 3 分鐘教學</button><button class="no" aria-label="不用了">✕</button>';
+    f.innerHTML='<button class="go">▶ 第一次用？看 3 分半教學</button><button class="no" aria-label="不用了">✕</button>';
     f.querySelector('.go').onclick=()=>openTut(0);
     f.querySelector('.no').onclick=()=>{markSeen();f.remove();};
     document.body.appendChild(f);
