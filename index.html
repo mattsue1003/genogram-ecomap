@@ -1502,6 +1502,8 @@ function removePerson(id){
   state.geno.unions.forEach(u=>{u.children=u.children.filter(c=>c.id!==id);});
   state.geno.unions=state.geno.unions.filter(u=>P(u.a)&&P(u.b));
   if(state.eco.inner) state.eco.inner=state.eco.inner.filter(r=>P(r.a)&&P(r.b));   // 圓內成員關係一併清掉
+  state.eco.systems.forEach(s=>{ if(s.targets) s.targets=s.targets.filter(pid=>P(pid)); });   // 外部系統「連到」此人的設定
+  if(state.eco.links) state.eco.links=state.eco.links.filter(l=>!(l.a.kind==='p'&&!P(l.a.id))&&!(l.b.kind==='p'&&!P(l.b.id)));   // 網絡圖中連到此人的線
   state.geno.ties=state.geno.ties.filter(t=>P(t.a)&&P(t.b));
   state.geno.circles.forEach(c=>{c.members=c.members.filter(m=>m!==id);});
   syncUI();
@@ -1836,7 +1838,7 @@ function buildGenogram(){
     });
     if(loops.length && c.label){
       const all=loops.flat(); const bot=all.reduce((a,b)=>b[1]>a[1]?b:a,all[0]);
-      text({cx:bot[0],cy:bot[1]+13,w:110,h:16,t:c.label,size:11.5,color:col.ring});
+      text({cx:bot[0],cy:bot[1]+13,w:110,h:16,t:c.label,size:11.5,color:col.ring,nudge:1});
     }
   });
 
@@ -1892,7 +1894,7 @@ function buildGenogram(){
     if(u.type==='separated'||u.type==='breakup') line({x1:mx-7,y1:markY+10,x2:mx+7,y2:markY-10,sw:2});
     [[u.a,a],[u.b,b]].forEach(([pid,per])=>{
       const n=seq[u.id+':'+pid]; if(!n) return;
-      text({cx:per.x+(mx-per.x)*0.55,cy:markY-13,w:24,h:14,t:String(n),size:11,color:GREY});
+      text({cx:per.x+(mx-per.x)*0.55,cy:markY-13,w:24,h:14,t:String(n),size:11,color:GREY,nudge:1});
     });
 
     if(!kids.length) return;
@@ -1983,7 +1985,7 @@ function buildGenogram(){
     }
     const hasName=!!(p.name&&p.name.trim());
     if(hasName) text({cx:p.x,cy:p.y+hh+16*FS(),w:GEN.SLOT,t:p.name.trim(),size:13*FS(),bold:p.index,abs:true});
-    if(p.note) text({cx:p.x,cy:p.y+hh+(hasName?30:16)*FS(),w:GEN.SLOT,t:p.note,size:10.5*FS(),color:GREY,abs:true});
+    if(p.note) text({cx:p.x,cy:p.y+hh+(hasName?30*FS()+4*(FS()-1)*5:16*FS()),w:GEN.SLOT,t:p.note,size:10.5*FS(),color:GREY,abs:true});
   });
   return size;
 }
@@ -1993,6 +1995,11 @@ function buildGenogram(){
 let ecoMode='network';
 let ECO_OFF={x:0,y:0};
 function setEcoMode(m){
+  /* 三種生態圖的版面座標不同：各模式分開記住外部系統的位置，切換時不互相干擾 */
+  if(m!==ecoMode) state.eco.systems.forEach(s=>{
+    s.pos ||= {}; s.pos[ecoMode]={x:s.x,y:s.y,pinned:!!s.pinned};
+    const p=s.pos[m]; if(p){ s.x=p.x; s.y=p.y; s.pinned=p.pinned; } else { s.x=null; s.y=null; s.pinned=false; }
+  });
   ecoMode=m;
   ecoSimpleBtn.classList.toggle('on',m==='simple');
   ecoFullBtn.classList.toggle('on',m==='full');
@@ -2251,11 +2258,12 @@ function buildEcomap(){
   /* 有成員之間的關係時，中心圓與成員符號放大，線才畫得下 */
   const big=inner.length>0;
   const SZ=big?32:22, anyT=sys.some(s=>(s.targets||[]).length);
-  const GAP=big?124:(anyT?46:36), RG=big?110:44;
+  const longest=Math.max(0,...members.map(m=>[...m].length))*(big?12:10)*FS()+10;   // 最長名字的寬度，避免名字互相重疊
+  const GAP=Math.max(big?124:(anyT?46:36),longest), RG=big?110:44;
   const perRow=members.length>3?Math.ceil(members.length/2):members.length;
   const rows=Math.ceil(members.length/(perRow||1));
   const SR=ECO.SR;
-  const CR=Math.max(ECO.CR, big?Math.max(((perRow||1)-1)/2*GAP+SZ/2+44, ((rows-1)/2)*RG+SZ+58):0);
+  const CR=Math.max(ECO.CR, ((perRow||1)-1)/2*GAP+Math.max(SZ/2,longest/2)+(big?44:24), big?((rows-1)/2)*RG+SZ+58:0);   // 圓要裝得下成員與名字
   const R=Math.max(230,40*n+90,CR+SR+90)+(SR-62)*2.2;
   /* 畫布大小以標準圓計算：放大中心圓時中心點不移動，已手動擺放的系統位置不會跑掉 */
   const w=R*2+Math.max(ECO.CR*3.3,CR*2+SR*2+40), h=R*2+Math.max(ECO.CR*2.6,CR*2+SR*2+40), cx=w/2, cy=h/2;
@@ -2423,11 +2431,26 @@ function legend(w,top){
 
 /* ===================== 渲染 ===================== */
 let SIZE={w:600,h:400};
+/* 小標籤（婚姻序號、生活圈名稱）若壓到其他文字，就近找空位挪開 */
+function nudgeLabels(){
+  const tw_=o=>[...String(o.t)].reduce((a,ch)=>a+(/[\u2E80-\uFFEF]/.test(ch)?1:0.6),0)*o.size;
+  const box=(o,dx=0,dy=0)=>{const w=tw_(o)+6,h=o.size*1.6; return {l:o.cx+dx-w/2,r:o.cx+dx+w/2,t:o.cy+dy-h/2,b:o.cy+dy+h/2};};
+  const hit=(a,b)=>Math.min(a.r,b.r)-Math.max(a.l,b.l)>0 && Math.min(a.b,b.b)-Math.max(a.t,b.t)>0;
+  const fixed=D.filter(o=>o.k==='text'&&!o.nudge&&String(o.t).trim()).map(o=>box(o));
+  D.filter(o=>o.k==='text'&&o.nudge).forEach(o=>{
+    const w=tw_(o), h=o.size*1.6;
+    const tries=[[0,0],[0,-h],[0,h],[-(w/2+14),0],[w/2+14,0],[0,-2*h],[0,2*h],[-(w+20),0],[w+20,0]];
+    const ok=tries.find(([dx,dy])=>{const b=box(o,dx,dy); return b.l>2&&b.t>2&&b.r<SIZE.w-2&&b.b<SIZE.h-2&&!fixed.some(f=>hit(f,b));});
+    if(ok){ o.cx+=ok[0]; o.cy+=ok[1]; }
+    fixed.push(box(o));
+  });
+}
 function render(){
   applyScales();
   clearD();
   SIZE = state.mode==='genogram' ? buildGenogram()
        : (ecoMode==='full' ? buildEcomapFull() : ecoMode==='network' ? buildEcomapNetwork() : buildEcomap());
+  nudgeLabels();
   if(optLegend.checked){
     const m=legendMetrics(SIZE.w), top=SIZE.h-10;
     SIZE.h+=m.h; legend(SIZE.w,top);
@@ -2520,7 +2543,7 @@ document.addEventListener('pointerup',()=>drag=null);
 document.addEventListener('pointercancel',()=>drag=null);
 
 /* ===================== 匯出 ===================== */
-const stamp=()=>new Date().toISOString().slice(0,10);
+const stamp=()=>{ const d=new Date(), z=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };   // 用本地日期（台灣早上 8 點前不會變成前一天）
 const fname=e=>`${state.mode==='genogram'?'家系圖':'生態圖'}_${stamp()}.${e}`;
 function download(b,n){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=n; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
