@@ -525,10 +525,10 @@ details.help .body b{color:var(--ink)}
         <input type="text" id="ecoCenter" style="width:100%" placeholder="例：王小明家庭"
                onfocus="snapshot()" oninput="state.eco.center=this.value;render()">
         <input type="text" id="ecoMembers" style="width:100%;margin-top:6px"
-               placeholder="成員，用頓號分隔：王小明、母、姊" onfocus="snapshot()" oninput="state.eco.members=this.value;render()">
+               placeholder="成員，用頓號分隔：王小明、母、姊" onfocus="snapshot()" oninput="state.eco.members=this.value;render()" onchange="syncUI()">
         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
           <button class="btn sm" onclick="importCenterFromGeno(true)">↙ 從家系圖帶入中心家庭</button>
-          <label class="chk"><input type="checkbox" id="optCenterIcons" checked onchange="render()"> 中心圓用符號顯示成員</label>
+          <label class="chk"><input type="checkbox" id="optCenterIcons" checked onchange="syncUI()"> 中心圓用符號顯示成員</label>
         </div>
         <p class="hint">會取家系圖的案主與「生活圈」同住成員；沒有生活圈時取案主、配偶與子女。帶入後可自行修改。</p>
       </div>
@@ -585,6 +585,11 @@ details.help .body b{color:var(--ink)}
         <option value="birth">年齡欄：出生年（民國）</option>
         <option value="birthAge">年齡欄：填民國出生年、顯示歲數</option>
       </select>
+      <select id="optFont" onchange="snapshot();autoLayout()" style="font-size:12px;padding:3px 5px" title="圖上文字大小（下載的檔案也會套用）">
+        <option value="1">字體：標準</option>
+        <option value="1.2">字體：大</option>
+        <option value="1.4">字體：特大</option>
+      </select>
       <select id="optIndex" onchange="render()" style="font-size:12px;padding:3px 5px" title="案主的標示方式">
         <option value="shade">案主：灰底（教科書標準）</option>
         <option value="double">案主：雙框</option>
@@ -631,8 +636,8 @@ const state = {
 };
 const GEN = { NW:72, NH:72, SLOT:118, GENH:170, MARGIN:60 };
 const ECO = { CR:92, SR:62 };
-const FS = () => 1;               // 文字倍率（固定）
-const IS = () => 1;               // 圖內文字倍率（固定）
+const FS = () => +(document.getElementById('optFont')?.value||1);   // 圖上文字倍率（工具列「字體」）
+const IS = () => FS();            // 符號內年齡也跟著放大
 const nodeScale = () => 1;        // 圖形倍率（固定）
 function applyScales(){}           // 保留呼叫點，不做任何事
 const INK='#12343B', GREY='#6b7772', SHADE='#D9D9D9';
@@ -884,6 +889,7 @@ function syncUI(){
       </div>
       <label class="chk" style="margin-top:6px"><input type="checkbox" ${s.stress?'checked':''}
         onchange="snapshot();S('${s.id}').stress=this.checked;render()"> 此連結帶來壓力／衝突</label>
+      ${ecoMode==='simple'?simpleTargetPick(s):''}
       ${ecoMode==='full'?`<div class="pick">
         <span class="lbl">連到（不選＝連到整個家庭）</span>
         ${state.geno.persons.map(q=>`<span class="chip ${(s.targets||[]).includes(q.id)?'on':''}"
@@ -2005,6 +2011,17 @@ function renderLinkList(){
              onfocus="snapshot()" oninput="LK('${l.id}').label=this.value;render()">
     </div>`).join('') : '<div class="empty">還沒有連線。按「＋ 新增連線」，或先在「完整家系生態圖」設定連到成員，切換過來會自動轉成連線。</div>';
 }
+/* 簡化模式：可指定系統連到中心圓裡的某位成員（例如：大兒子 ↔ 學校） */
+function simpleTargetPick(s){
+  const names=(state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,6);
+  const ps=names.map(nm=>state.geno.persons.find(q=>label(q)===nm)).filter(Boolean);
+  if(!ps.length) return '';
+  const on=document.getElementById('optCenterIcons')?.checked;
+  return `<div class="pick">
+    <span class="lbl">連到成員（不選＝連到整個家庭）${on?'':'：請先勾選上方「中心圓用符號顯示成員」'}</span>
+    ${ps.map(q=>`<span class="chip ${(s.targets||[]).includes(q.id)?'on':''}" onclick="toggleSysTarget('${s.id}','${q.id}')">${esc(label(q))}</span>`).join('')}
+  </div>`;
+}
 function toggleSysTarget(sid,pid){
   snapshot();
   const s=S(sid); s.targets ||= [];
@@ -2181,8 +2198,21 @@ function buildEcomap(){
     const ang=-Math.PI/2+i*2*Math.PI/n;
     s.x=cx+R*Math.cos(ang); s.y=cy+R*Math.sin(ang);
   }});
-  sys.forEach(s=>{
-    const [x1,y1,x2,y2]=trim(cx,cy,s.x,s.y,CR+2,SR+2);
+  const members=(state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,6);
+  const useIcons=document.getElementById('optCenterIcons')?.checked && members.length;
+  /* 圓內成員符號的位置（先算好，連到個別成員的線要用） */
+  const anyT=sys.some(s=>(s.targets||[]).length);
+  const SZ=22, GAP=anyT?46:36, perRow=members.length>3?Math.ceil(members.length/2):members.length;
+  const rows=Math.ceil(members.length/(perRow||1));
+  const mpos={};   // 成員 id → 圓內位置
+  const icons=members.map((nm,i)=>{
+    const r=Math.floor(i/perRow), c=i%perRow, nn=Math.min(perRow,members.length-r*perRow);
+    const x=cx+(c-(nn-1)/2)*GAP, y=cy-CR*0.08+(r-(rows-1)/2)*44;
+    const per=state.geno.persons.find(q=>label(q)===nm);
+    if(per) mpos[per.id]={x,y};
+    return {nm,x,y,per};
+  });
+  const linkTo=(s,x1,y1,x2,y2)=>{
     const sw=s.strength==='strong'?5:s.strength==='weak'?1.6:2.6;
     const c=s.stress?col.stress:col.tie;
     s.stress ? zig(x1,y1,x2,y2,{amp:6,sw,stroke:c})
@@ -2196,24 +2226,24 @@ function buildEcomap(){
       if(s.flow==='in'||s.flow==='both') arrow(x2,y2,x1,y1);
       if(s.flow==='out'||s.flow==='both') arrow(x1,y1,x2,y2);
     }
-  });
+  };
+  /* 有指定成員（且圓內用符號顯示）→ 連到該成員；否則連到整個家庭的圓 */
+  const memberTargets=s=>useIcons?(s.targets||[]).filter(pid=>mpos[pid]):[];
+  sys.forEach(s=>{ if(memberTargets(s).length) return;
+    const [x1,y1,x2,y2]=trim(cx,cy,s.x,s.y,CR+2,SR+2); linkTo(s,x1,y1,x2,y2); });
   if(!sys.length)
     text({cx, cy:cy-CR-36, w:w-60, h:20, t:'在左側新增外部系統（學校、醫療、就業、鄰里…）', size:12.5, color:'#9aa6a2'});
   shape({shape:'ellipse',x:cx-CR,y:cy-CR,w:CR*2,h:CR*2,sw:3.5,fill:'#ffffff'});
-  const members=(state.eco.members||'').split(/[、,，\/\s]+/).filter(Boolean).slice(0,6);
-  const useIcons=document.getElementById('optCenterIcons')?.checked && members.length;
   if(!useIcons){
     text({cx,cy:cy-18,w:CR*1.8,h:22,t:state.eco.center||'個案家庭',size:16,bold:true});
     members.slice(0,4).forEach((m,i)=>text({cx,cy:cy+8*FS()+i*19*FS(),w:CR*1.8,h:18,t:m,size:12.5,color:'#41504e'}));
   }else{
+    /* 連到個別成員的線畫在圓上面，從成員符號直接拉到系統 */
+    sys.forEach(s=>memberTargets(s).forEach(pid=>{ const m=mpos[pid];
+      const [x1,y1,x2,y2]=trim(m.x,m.y,s.x,s.y,SZ/2+3,SR+2); linkTo(s,x1,y1,x2,y2); }));
     text({cx,cy:cy-CR*0.62,w:CR*1.8,h:20,t:state.eco.center||'個案家庭',size:14,bold:true});
     const idxStyleE=(document.getElementById('optIndex')?.value)||'shade';
-    const SZ=22, GAP=36, perRow=members.length>3?Math.ceil(members.length/2):members.length;
-    const rows=Math.ceil(members.length/perRow);
-    members.forEach((nm,i)=>{
-      const r=Math.floor(i/perRow), c=i%perRow, n=Math.min(perRow,members.length-r*perRow);
-      const x=cx+(c-(n-1)/2)*GAP, y=cy-CR*0.08+(r-(rows-1)/2)*44;
-      const per=state.geno.persons.find(q=>label(q)===nm);
+    icons.forEach(({nm,x,y,per})=>{
       const g=per?per.gender:'unknown', isIdx=!!per?.index;
       const fill=(isIdx&&idxStyleE==='shade')?SHADE:'#ffffff';
       const stroke=(isIdx&&idxStyleE==='red')?'#D64027':INK;
@@ -2221,7 +2251,9 @@ function buildEcomap(){
       shape({shape:shp,x:x-SZ/2,y:y-SZ/2,w:SZ,h:SZ,sw:isIdx&&idxStyleE==='red'?2.4:1.8,fill,stroke});
       if(isIdx&&idxStyleE==='double') shape({shape:shp,x:x-SZ/2+3,y:y-SZ/2+3,w:SZ-6,h:SZ-6,sw:1.2,stroke:INK});
       if(per?.dead){ line({x1:x-SZ/2,y1:y-SZ/2,x2:x+SZ/2,y2:y+SZ/2,sw:1.4}); line({x1:x+SZ/2,y1:y-SZ/2,x2:x-SZ/2,y2:y+SZ/2,sw:1.4}); }
-      text({cx:x,cy:y+SZ/2+9,w:GAP,h:14,t:nm,size:10,color:'#41504e',bold:isIdx});
+      const lw=nm.length*10*FS()+6;
+      if(anyT) shape({shape:'rect',x:x-lw/2,y:y+SZ/2+9*FS()-7*FS(),w:lw,h:14*FS(),sw:0,stroke:'#ffffff',fill:'#ffffff'});   // 線經過時名字仍清楚
+      text({cx:x,cy:y+SZ/2+9*FS(),w:GAP*FS(),h:14,t:nm,size:10,color:'#41504e',bold:isIdx});
     });
   }
   sys.forEach(s=>{
@@ -2559,7 +2591,7 @@ function confirmSaveJSON(){
 }
 function doSaveJSON(filename){
   const opt={age:optAge.value,sort:optSort.checked,legend:optLegend.checked,color:optColor.checked,
-             index:optIndex.value,zoom,icons:document.getElementById('optCenterIcons')?.checked,ecoMode};
+             index:optIndex.value,zoom,icons:document.getElementById('optCenterIcons')?.checked,ecoMode,font:optFont.value};
   download(new Blob([JSON.stringify({v:3,opt,...state},null,2)],{type:'application/json'}),filename);
   toast(`已存檔「${filename}」，下次可用「開啟 JSON」續編`);
 }
@@ -2577,7 +2609,7 @@ function loadJSON(inp){
     if(d.opt){ optAge.value=d.opt.age||'age'; curAgeMode=optAge.value; optSort.checked=!!d.opt.sort;
       if(d.opt.index) optIndex.value=d.opt.index;
       if(d.opt.zoom){ zoom=d.opt.zoom; }
-      optLegend.checked=!!d.opt.legend; optColor.checked=!!d.opt.color; }
+      optLegend.checked=!!d.opt.legend; optColor.checked=!!d.opt.color; optFont.value=d.opt.font||'1'; }
     uid=99999; setMode(d.mode||'genogram'); syncUI(); toast('已載入檔案');
   }catch(e){ toast('檔案格式無法辨識'); } };
   r.readAsText(f); inp.value='';
@@ -2608,7 +2640,7 @@ const nowStr=()=>{ const d=new Date(); const p=n=>String(n).padStart(2,'0');
 function packState(){
   return JSON.stringify({v:3,mode:state.mode,geno:state.geno,eco:state.eco,
     opt:{age:optAge.value,sort:optSort.checked,legend:optLegend.checked,color:optColor.checked,index:optIndex.value,
-         icons:document.getElementById('optCenterIcons')?.checked,ecoMode}});
+         icons:document.getElementById('optCenterIcons')?.checked,ecoMode,font:optFont.value}});
 }
 function unpackState(str){
   const d=JSON.parse(str);
@@ -2618,7 +2650,8 @@ function unpackState(str){
   if(d.opt){ optAge.value=d.opt.age||'age'; curAgeMode=optAge.value; optSort.checked=!!d.opt.sort;
     optLegend.checked=!!d.opt.legend; optColor.checked=!!d.opt.color; if(d.opt.index) optIndex.value=d.opt.index;
     if(d.opt.icons!==undefined){ const ci=document.getElementById('optCenterIcons'); if(ci) ci.checked=!!d.opt.icons; }
-    if(d.opt.ecoMode){ ecoMode=d.opt.ecoMode; setEcoMode(ecoMode); } }
+    if(d.opt.ecoMode){ ecoMode=d.opt.ecoMode; setEcoMode(ecoMode); }
+    optFont.value=d.opt.font||'1'; }
   uid=99999; setMode(d.mode||'genogram'); syncUI();
 }
 /* 自動儲存：每次畫面更新後 800ms 內若無新變動就寫入 */
@@ -2836,7 +2869,7 @@ function importCenterFromGeno(announce){
   state.eco.members = hh.map(p=>(p.name||'').trim()).filter(Boolean).join('、');
   const ec=document.getElementById('ecoCenter'), em=document.getElementById('ecoMembers');
   if(ec) ec.value=state.eco.center; if(em) em.value=state.eco.members;
-  renderGenoLink(); render();
+  syncUI();   // 外部系統的「連到成員」選項也要跟著更新
   if(announce) toast(`已從家系圖帶入：${state.eco.center}（${hh.length} 人）`);
   return true;
 }
@@ -3469,7 +3502,7 @@ function chrome(S,o={}){
     E('line',{x1:660,y1:hdrH,x2:660,y2:L.H,stroke:C.line},R);
     E('rect',{x:661,y:hdrH,width:L.W-661,height:L.H-hdrH,fill:'url(#tutGrid)'},R);
     const tb=E('text',{x:690,y:hdrH+22,'font-size':15,fill:C.muted,'dominant-baseline':'central','font-family':FONT},R,
-      '↶ 復原　↷ 取消復原　│　重新自動排版　☑ 長幼排序　☐ 附圖例　☐ 彩色標示　☐ 透明背景');
+      '↶ 復原　↷ 取消復原　│　重新自動排版　☑ 長幼排序　☐ 附圖例　☐ 彩色標示　☐ 透明背景　字體：標準 ▾');
     E('text',{x:L.W-24,y:hdrH+22,'font-size':15,fill:C.muted,'text-anchor':'end','dominant-baseline':'central','font-family':FONT},R,'檢視 － 100% ＋ 符合');
   } else {
     E('rect',{x:600,y:26,width:126,height:48,rx:8,fill:'transparent',stroke:C.amber},R);
