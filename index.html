@@ -548,7 +548,7 @@ details.help .body b{color:var(--ink)}
         <h2>連線（自由網絡圖）</h2>
         <div id="linkList"></div>
         <button class="btn sm" onclick="addLink()">＋ 新增連線</button>
-        <p class="hint">人或單位都可以互連；同一對之間可以有多條線（各自寫事件）。線上文字例如「聲請保護令」「1150724 通報」。</p>
+        <p class="hint">人、單位或「整個家戶（同住）」都可以互連；同一對之間可以有多條線（各自寫事件）。線上文字例如「聲請保護令」「1150724 通報」。</p>
         <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="optRingFill" checked onchange="render()"> 生活圈填淡色</label>
         </div>
@@ -1553,8 +1553,12 @@ function computeGeno(){
       myUs.slice(1).forEach(pushSp);
       myUs.forEach(u=>sortedKids(u).forEach(c=>visit(c.id)));
     }else{
-      push(p); pushPets(pid);
-      myUs.forEach(u=>{ pushSp(u); sortedKids(u).forEach(c=>visit(c.id)); });
+      /* 單段婚姻：一律男左女右，不受建立順序影響 */
+      const u0=myUs[0], sp0=u0?P(u0.a===pid?u0.b:u0.a):null;
+      const spFirst=!!sp0&&!seen.has(sp0.id)&&p.gender==='female'&&sp0.gender==='male';
+      if(spFirst){ pushSp(u0); push(p); pushPets(pid); sortedKids(u0).forEach(c=>visit(c.id)); }
+      else{ push(p); pushPets(pid);
+        myUs.forEach(u=>{ pushSp(u); sortedKids(u).forEach(c=>visit(c.id)); }); }
     }
   }
   ps.filter(p=>!childOf[p.id]).forEach(p=>visit(p.id));
@@ -2041,7 +2045,8 @@ function endOpts(sel){
   const cur=sel&&sel.kind?sel.kind+':'+sel.id:'';
   return `<option value="" disabled ${!cur?'selected':''}>— 選對象 —</option>
     <optgroup label="人">${state.geno.persons.map(p=>`<option value="p:${p.id}" ${cur==='p:'+p.id?'selected':''}>${esc(label(p))}</option>`).join('')}</optgroup>
-    <optgroup label="單位">${state.eco.systems.map(x=>`<option value="s:${x.id}" ${cur==='s:'+x.id?'selected':''}>${esc(x.label||'（未命名單位）')}</option>`).join('')}</optgroup>`;
+    <optgroup label="單位">${state.eco.systems.map(x=>`<option value="s:${x.id}" ${cur==='s:'+x.id?'selected':''}>${esc(x.label||'（未命名單位）')}</option>`).join('')}</optgroup>
+    <optgroup label="家戶"><option value="h:hh" ${cur==='h:hh'?'selected':''}>整個家戶（同住）</option></optgroup>`;
 }
 function renderLinkList(){
   const box=document.getElementById('linkList'); if(!box) return;
@@ -2135,19 +2140,47 @@ function buildEcomapNetwork(){
       s.x=best[0]; s.y=best[1]; s.pinned=true;
     }});
   }
+  /* 「整個家戶」端點：同住成員（生活圈或案主＋配偶＋子女）外圍的虛線框，線停在框邊 */
+  const hhMem=householdFromGeno();
+  const useHH=links.some(l=>l.a?.kind==='h'||l.b?.kind==='h');
+  let HB=null;
+  if(useHH&&hhMem.length){
+    const HW=GEN.NW/2, HH=GEN.NH/2, PAD=22;
+    const xs=hhMem.map(p=>p.x+padX), ys=hhMem.map(p=>p.y+padY);
+    HB={x:Math.min(...xs)-HW-PAD, y:Math.min(...ys)-HH-PAD-10, w:Math.max(...xs)-Math.min(...xs)+GEN.NW+PAD*2, h:Math.max(...ys)-Math.min(...ys)+GEN.NH+PAD*2+10};
+  }
+  const hbHit=(tx,ty)=>{                       // 從家戶框中心朝 (tx,ty) 射出，與框邊的交點
+    const cxh=HB.x+HB.w/2, cyh=HB.y+HB.h/2, ang=Math.atan2(ty-cyh,tx-cxh);
+    const hw=HB.w/2, hh=HB.h/2, ux=Math.cos(ang), uy=Math.sin(ang);
+    const t=Math.min(Math.abs(hw/(ux||1e-6)), Math.abs(hh/(uy||1e-6)));
+    return [cxh+ux*t, cyh+uy*t];
+  };
   const endOf=ref=>{
     if(!ref||!ref.kind) return null;
     if(ref.kind==='p'){ const p=P(ref.id); if(!p) return null;
       return {x:p.x+padX,y:p.y+padY,p}; }
+    if(ref.kind==='h'){ if(!HB) return null; return {x:HB.x+HB.w/2,y:HB.y+HB.h/2,hh:true}; }
     const t=S(ref.id); if(!t) return null; return {x:t.x,y:t.y,r:SR+2};
   };
+  if(HB){
+    const r=26, x1=HB.x, y1=HB.y, x2=HB.x+HB.w, y2=HB.y+HB.h;
+    const seg=(ax,ay,bx,by)=>line({x1:ax,y1:ay,x2:bx,y2:by,sw:1.6,dash:'8 6',stroke:'#a8b3b0'});
+    seg(x1+r,y1,x2-r,y1); seg(x2,y1+r,x2,y2-r); seg(x2-r,y2,x1+r,y2); seg(x1,y2-r,x1,y1+r);
+    [[x2-r,y1+r,-Math.PI/2,0],[x2-r,y2-r,0,Math.PI/2],[x1+r,y2-r,Math.PI/2,Math.PI],[x1+r,y1+r,Math.PI,Math.PI*1.5]]
+      .forEach(([ax,ay,a0,a1])=>{ let pv=null;
+        for(let i=0;i<=6;i++){ const a=a0+(a1-a0)*i/6, pt=[ax+r*Math.cos(a),ay+r*Math.sin(a)];
+          if(pv) line({x1:pv[0],y1:pv[1],x2:pt[0],y2:pt[1],sw:1.6,dash:'8 6',stroke:'#a8b3b0'}); pv=pt; } });
+    text({cx:x1+50,cy:y1-11,w:120,h:16,t:state.eco.center||'同住家戶',size:11.5,color:'#8b9591',nudge:1});
+  }
   /* 同一對之間的多條線：平行錯開 */
   const groups=new Map();
   links.forEach(l=>{ const key=[l.a.kind+l.a.id,l.b.kind+l.b.id].sort().join('|');
     (groups.get(key)||groups.set(key,[]).get(key)).push(l); });
   groups.forEach(arr=>arr.forEach((l,i)=>{
     const A=endOf(l.a), B=endOf(l.b); if(!A||!B||(l.a.kind===l.b.kind&&l.a.id===l.b.id)) return;
-    let [x1,y1,x2,y2]=trimToShapes(A.x,A.y,B.x,B.y,A.p||null,B.p||null,2,A.r,B.r);
+    if(A.hh){ [A.x,A.y]=hbHit(B.x,B.y); }      // 家戶端：改從框邊出發
+    if(B.hh){ [B.x,B.y]=hbHit(A.x,A.y); }
+    let [x1,y1,x2,y2]=trimToShapes(A.x,A.y,B.x,B.y,A.p||null,B.p||null,2,A.hh?0:A.r,B.hh?0:B.r);
     const gap=arr.some(x=>x.label&&x.label.trim())?18:11;   // 有寫事件的線，間距拉開避免文字重疊
     const off=(i-(arr.length-1)/2)*gap;
     const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1, px=-dy/len*off, py=dx/len*off;
@@ -3979,6 +4012,7 @@ CH.push({title:'生態圖',sub:'盤點正式與非正式資源',dur:26,
     [9.4,'新增的系統會自動連到案主，連線列在上方「連線（自由網絡圖）」'],
     [11.4,'每條連線可改類型：強連結（雙線）、薄弱（虛線）、壓力／衝突（鋸齒）'],
     [15.2,'也能加箭頭表示資源流向，並在線上寫事件或日期'],
+    [17.8,'連線對象除了個人，也可選「整個家戶（同住）」，線會停在家戶虛線框上'],
     [19.4,'人和單位都能拖曳擺放；想要傳統畫法，可切換「簡化：一個圓」']],
   build(S){
     const u=UI(S.gForm);
