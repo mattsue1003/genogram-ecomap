@@ -548,7 +548,7 @@ details.help .body b{color:var(--ink)}
         <h2>連線（自由網絡圖）</h2>
         <div id="linkList"></div>
         <button class="btn sm" onclick="addLink()">＋ 新增連線</button>
-        <p class="hint">人、單位或「整個家戶（同住）」都可以互連；同一對之間可以有多條線（各自寫事件）。線上文字例如「聲請保護令」「1150724 通報」。</p>
+        <p class="hint">人、單位或「整個家戶（同住）」都可以互連。「整個家戶」的範圍＝家系圖「生活圈」勾選的同住成員（優先取名稱含「同住」的圈）；沒有設生活圈時，用案主＋配偶＋子女。同一對之間可以有多條線（各自寫事件）。線上文字例如「聲請保護令」「1150724 通報」。</p>
         <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="optRingFill" checked onchange="render()"> 生活圈填淡色</label>
         </div>
@@ -2140,37 +2140,45 @@ function buildEcomapNetwork(){
       s.x=best[0]; s.y=best[1]; s.pinned=true;
     }});
   }
-  /* 「整個家戶」端點：同住成員（生活圈或案主＋配偶＋子女）外圍的虛線框，線停在框邊 */
+  /* 「整個家戶」端點：同住成員（生活圈，或案主＋配偶＋子女）的外圍輪廓；線停在輪廓上，不會框到非同住者 */
   const hhMem=householdFromGeno();
   const useHH=links.some(l=>l.a?.kind==='h'||l.b?.kind==='h');
-  let HB=null;
+  let HB=null;      // {loops:[[x,y],…][], cx, cy, drawn}
   if(useHH&&hhMem.length){
-    const HW=GEN.NW/2, HH=GEN.NH/2, PAD=22;
-    const xs=hhMem.map(p=>p.x+padX), ys=hhMem.map(p=>p.y+padY);
-    HB={x:Math.min(...xs)-HW-PAD, y:Math.min(...ys)-HH-PAD-10, w:Math.max(...xs)-Math.min(...xs)+GEN.NW+PAD*2, h:Math.max(...ys)-Math.min(...ys)+GEN.NH+PAD*2+10};
+    const HW=GEN.NW/2, HH=GEN.NH/2;
+    const withMem=state.geno.circles.filter(c=>c.members.length);
+    const circle=withMem.find(c=>/同住/.test(c.label||''))||withMem[0];
+    const others=state.geno.persons.filter(p=>!hhMem.includes(p));
+    const raw=(circle&&circle.manual)?[smoothLoop(circle.manual)]:circleOutlines(hhMem,others,HW,HH,(circle&&circle.tight)||1);
+    const loops=raw.map(lp=>lp.map(([x,y])=>[x+padX,y+padY]));
+    const cxh=hhMem.reduce((a,p)=>a+p.x,0)/hhMem.length+padX, cyh=hhMem.reduce((a,p)=>a+p.y,0)/hhMem.length+padY;
+    HB={loops,cx:cxh,cy:cyh,drawn:!!circle};
   }
-  const hbHit=(tx,ty)=>{                       // 從家戶框中心朝 (tx,ty) 射出，與框邊的交點
-    const cxh=HB.x+HB.w/2, cyh=HB.y+HB.h/2, ang=Math.atan2(ty-cyh,tx-cxh);
-    const hw=HB.w/2, hh=HB.h/2, ux=Math.cos(ang), uy=Math.sin(ang);
-    const t=Math.min(Math.abs(hw/(ux||1e-6)), Math.abs(hh/(uy||1e-6)));
-    return [cxh+ux*t, cyh+uy*t];
+  const hbHit=(tx,ty)=>{                       // 從家戶重心朝 (tx,ty) 射出，取與輪廓最靠近目標的交點
+    let best=null,bestD=-1;
+    HB.loops.forEach(lp=>{ for(let i=0;i<lp.length;i++){ const a=lp[i], b=lp[(i+1)%lp.length];
+      const r=segHit(HB.cx,HB.cy,tx,ty,a[0],a[1],b[0],b[1]); if(!r) continue;
+      const d=Math.hypot(r[0]-HB.cx,r[1]-HB.cy); if(d>bestD){ bestD=d; best=r; } } });
+    return best||[HB.cx,HB.cy];
+  };
+  const segHit=(x1,y1,x2,y2,x3,y3,x4,y4)=>{     // 線段交點
+    const d=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4); if(Math.abs(d)<1e-9) return null;
+    const t=((x1-x3)*(y3-y4)-(y1-y3)*(x3-x4))/d, u=-((x1-x2)*(y1-y3)-(y1-y2)*(x1-x3))/d;
+    return (t>=0&&t<=1&&u>=0&&u<=1)?[x1+t*(x2-x1),y1+t*(y2-y1)]:null;
   };
   const endOf=ref=>{
     if(!ref||!ref.kind) return null;
     if(ref.kind==='p'){ const p=P(ref.id); if(!p) return null;
       return {x:p.x+padX,y:p.y+padY,p}; }
-    if(ref.kind==='h'){ if(!HB) return null; return {x:HB.x+HB.w/2,y:HB.y+HB.h/2,hh:true}; }
+    if(ref.kind==='h'){ if(!HB) return null; return {x:HB.cx,y:HB.cy,hh:true}; }
     const t=S(ref.id); if(!t) return null; return {x:t.x,y:t.y,r:SR+2};
   };
   if(HB){
-    const r=26, x1=HB.x, y1=HB.y, x2=HB.x+HB.w, y2=HB.y+HB.h;
-    const seg=(ax,ay,bx,by)=>line({x1:ax,y1:ay,x2:bx,y2:by,sw:1.6,dash:'8 6',stroke:'#a8b3b0'});
-    seg(x1+r,y1,x2-r,y1); seg(x2,y1+r,x2,y2-r); seg(x2-r,y2,x1+r,y2); seg(x1,y2-r,x1,y1+r);
-    [[x2-r,y1+r,-Math.PI/2,0],[x2-r,y2-r,0,Math.PI/2],[x1+r,y2-r,Math.PI/2,Math.PI],[x1+r,y1+r,Math.PI,Math.PI*1.5]]
-      .forEach(([ax,ay,a0,a1])=>{ let pv=null;
-        for(let i=0;i<=6;i++){ const a=a0+(a1-a0)*i/6, pt=[ax+r*Math.cos(a),ay+r*Math.sin(a)];
-          if(pv) line({x1:pv[0],y1:pv[1],x2:pt[0],y2:pt[1],sw:1.6,dash:'8 6',stroke:'#a8b3b0'}); pv=pt; } });
-    text({cx:x1+50,cy:y1-11,w:120,h:16,t:state.eco.center||'同住家戶',size:11.5,color:'#8b9591',nudge:1});
+    if(!HB.drawn) HB.loops.forEach(lp=>D.push({k:'ringpath',pts:lp,stroke:'#a8b3b0',dashed:true}));   // 沒有生活圈時才另畫一圈
+    const all=HB.loops.flat(), top=all.reduce((a,b)=>b[1]<a[1]?b:a,all[0]), bot=all.reduce((a,b)=>b[1]>a[1]?b:a,all[0]);
+    if(!HB.drawn) text({cx:top[0],cy:top[1]-11,w:140,h:16,t:state.eco.center||'同住家戶',size:11.5,color:'#8b9591',nudge:1});
+    if(hhMem.length<2&&!state.geno.circles.some(c=>c.members.length))
+      text({cx:bot[0],cy:bot[1]+14,w:300,h:16,t:'家戶目前只有案主：請在家系圖「生活圈」勾選同住成員',size:11,color:'#c25a3c',nudge:1});
   }
   /* 同一對之間的多條線：平行錯開 */
   const groups=new Map();
@@ -2999,7 +3007,8 @@ async function exportDOCX(){
 /* ===================== 家系圖 → 生態圖 連動 ===================== */
 function householdFromGeno(){
   const g=state.geno, idx=g.persons.find(p=>p.index);
-  const circle=g.circles.find(c=>c.members.length);
+  const withMem=g.circles.filter(c=>c.members.length);
+  const circle=withMem.find(c=>/同住/.test(c.label||''))||withMem[0];   // 優先取名稱含「同住」的生活圈
   if(circle) return circle.members.map(P).filter(Boolean);
   if(!idx) return [];
   const out=[idx];
@@ -4012,7 +4021,7 @@ CH.push({title:'生態圖',sub:'盤點正式與非正式資源',dur:26,
     [9.4,'新增的系統會自動連到案主，連線列在上方「連線（自由網絡圖）」'],
     [11.4,'每條連線可改類型：強連結（雙線）、薄弱（虛線）、壓力／衝突（鋸齒）'],
     [15.2,'也能加箭頭表示資源流向，並在線上寫事件或日期'],
-    [17.8,'連線對象除了個人，也可選「整個家戶（同住）」，線會停在家戶虛線框上'],
+    [17.8,'連線對象也可選「整個家戶（同住）」：線停在「生活圈」同住成員的外圍，不會連到單一個人'],
     [19.4,'人和單位都能拖曳擺放；想要傳統畫法，可切換「簡化：一個圓」']],
   build(S){
     const u=UI(S.gForm);
