@@ -285,6 +285,18 @@ details.help .body b{color:var(--ink)}
 .save-row span{color:var(--muted);font-size:14px}
 .save-box .hint{margin:10px 0 0}
 .save-act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.upd-box{width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto}
+.upd-box .upd-date{font-size:12.5px;color:var(--muted);margin:-6px 0 10px}
+.upd-box ul{margin:0;padding-left:20px;font-size:14px;line-height:1.65;color:var(--ink)}
+.upd-box li+li{margin-top:4px}
+.upd-box .upd-old{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.upd-box .upd-old summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.upd-box .upd-old h4{margin:10px 0 4px;font-size:13px;color:var(--ink)}
+.upd-box .upd-old ul{font-size:13px;color:var(--muted)}
+.upd-never{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-top:14px;cursor:pointer}
+.upd-never input{width:16px;height:16px;accent-color:var(--teal)}
+.upd-act{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.upd-act .right{display:flex;gap:8px;margin-left:auto}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
 #toast.on{pointer-events:auto}
 .undo-btn{margin-left:10px;border:1px solid var(--amber);background:transparent;color:var(--amber);border-radius:5px;padding:3px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
@@ -364,6 +376,7 @@ details.help .body b{color:var(--ink)}
   <div class="spacer"></div>
   <button class="btn ghost mob-only" id="hdrMenuBtn" onclick="toggleHdrMenu(event)">☰ 選單</button>
   <div class="hdr-actions" id="hdrActions">
+  <button class="btn ghost" onclick="openUpdates(true);hdrActions.classList.remove('on')" title="看最近更新了什麼">最新更新</button>
   <button class="btn ghost" onclick="newChart();hdrActions.classList.remove('on')">＋ 建立新圖</button>
   <span class="tpl-wrap">
     <button class="btn ghost" onclick="toggleTplMenu(event)">範本 ▾</button>
@@ -628,6 +641,20 @@ details.help .body b{color:var(--ink)}
       檔案會存到瀏覽器的「下載」位置；之後按「開啟 JSON」選這個檔案即可繼續修改。</p>
     <div class="save-act"><button class="btn" onclick="closeSaveModal()">取消</button>
       <button class="btn primary" onclick="confirmSaveJSON()">儲存</button></div>
+  </div>
+</div>
+<div id="updModal" class="save-bg" style="display:none" onclick="if(event.target===this)closeUpdates()">
+  <div class="save-box upd-box" role="dialog" aria-modal="true" aria-labelledby="updTitle">
+    <h3 id="updTitle">工具更新了</h3>
+    <div class="upd-date" id="updDate"></div>
+    <ul id="updList"></ul>
+    <details class="upd-old" id="updOld"><summary>看更早的更新</summary><div id="updOldBody"></div></details>
+    <p class="hint" style="margin-top:12px">連結沒有變，重新整理網頁就是新版。使用上有任何錯誤或建議，歡迎按右下角「錯誤／建議」告訴我。</p>
+    <label class="upd-never"><input type="checkbox" id="updNever"> 永久不再提醒（之後的更新也不會跳出）</label>
+    <div class="upd-act">
+      <button class="btn" onclick="closeUpdates();openTutorial&&openTutorial(0)">看教學影片</button>
+      <div class="right"><button class="btn primary" onclick="closeUpdates()">知道了</button></div>
+    </div>
   </div>
 </div>
 <div id="toast"></div>
@@ -2789,6 +2816,56 @@ function techInfo(){
   ].join('\n');
 }
 
+/* ===================== 更新提醒 =====================
+   每次更新：在 UPDATES 最前面加一筆（date 就是版本號）。
+   開啟網頁時，若這一版還沒看過就跳出；勾「永久不再提醒」之後不再跳。第一次來的人不跳（沒有舊版可比較）。 */
+const UPDATES=[
+  {date:'2026-11-12',items:[
+    '自由網絡圖的連線對象可選「整個家戶（同住）」：線停在「生活圈」同住成員的外圍，不會連到單一個人。',
+    '家戶範圍優先取名稱含「同住」的生活圈；沒有設生活圈時用案主＋配偶＋子女，只有案主一人時會提示。',
+    '家系圖的夫妻一律男左女右，不再受建立順序影響。']},
+  {date:'2026-11-04',items:[
+    '工具列新增「字體」：標準、大、特大，下載的 PPTX／Word／PNG／SVG 一起套用。',
+    '「簡化：一個圓」的外部系統可「連到成員」，也可畫圓內家人之間的關係線（正向、強烈、負向、緊張、關係阻斷）。',
+    '按「存檔 JSON」會先詢問檔名；開啟舊檔再存檔會沿用原檔名。',
+    '婚姻／伴侶關係與情感關係改為兩行，手機上選成員看得到名字。',
+    '教學影片新增第 5 章「字體與生態圖連線」。']},
+  {date:'2026-10-28',items:[
+    '內建操作教學影片（電腦 16:9、手機 9:16），按上方「▶ 教學影片」隨時看。',
+    '右下角新增「錯誤／建議」回報按鈕。']},
+];
+const LS_UPD_SEEN='genoTool.updateSeen', LS_UPD_NEVER='genoTool.updateNever';
+const lsGet=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+function renderUpdates(){
+  const [cur,...old]=UPDATES;
+  document.getElementById('updDate').textContent=cur.date.replace(/-/g,'/')+' 更新';
+  document.getElementById('updList').innerHTML=cur.items.map(t=>`<li>${t}</li>`).join('');
+  const box=document.getElementById('updOld');
+  if(old.length){ box.style.display=''; document.getElementById('updOldBody').innerHTML=old.map(u=>`<h4>${u.date.replace(/-/g,'/')}</h4><ul>${u.items.map(t=>`<li>${t}</li>`).join('')}</ul>`).join(''); }
+  else box.style.display='none';
+}
+function openUpdates(manual){
+  renderUpdates();
+  document.getElementById('updNever').checked=lsGet(LS_UPD_NEVER)==='1';
+  document.getElementById('updOld').open=!!manual;
+  document.getElementById('updModal').style.display='flex';
+}
+function closeUpdates(){
+  document.getElementById('updModal').style.display='none';
+  lsSet(LS_UPD_SEEN,UPDATES[0].date);
+  const never=document.getElementById('updNever').checked;
+  if(never) lsSet(LS_UPD_NEVER,'1'); else { try{ localStorage.removeItem(LS_UPD_NEVER); }catch(e){} }
+}
+function checkUpdates(){
+  const seenVer=lsGet(LS_UPD_SEEN);
+  const returning=seenVer||lsGet('geno_tut_seen_v1')||lsGet('genoTool.autosave')||lsGet('genoTool.slots');
+  if(!returning){ lsSet(LS_UPD_SEEN,UPDATES[0].date); return; }   // 第一次來：沒有舊版可比較，直接記成已看過
+  if(lsGet(LS_UPD_NEVER)==='1'){ lsSet(LS_UPD_SEEN,UPDATES[0].date); return; }
+  if(seenVer===UPDATES[0].date) return;
+  openUpdates(false);
+}
+
 /* ===================== 本機暫存（localStorage） ===================== */
 const LS_AUTO='genoTool.autosave', LS_SLOTS='genoTool.slots', LS_DISMISS='genoTool.dismissAt';
 const lsOK=(()=>{ try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return true; }catch(e){ return false; } })();
@@ -3358,6 +3435,7 @@ HIST.past.length=0; HIST.future.length=0; updateHistBtns();   // 初始載入不
 initMobile();
 autosaveArmed=false; clearTimeout(autoTimer);   // 初始載入範例不算使用者變更，不要覆蓋上次的自動儲存
 checkResume();
+checkUpdates();
 </script>
 <script>
 /* =====================================================================
