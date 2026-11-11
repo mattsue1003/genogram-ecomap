@@ -650,7 +650,7 @@ details.help .body b{color:var(--ink)}
     <ul id="updList"></ul>
     <details class="upd-old" id="updOld"><summary>看更早的更新</summary><div id="updOldBody"></div></details>
     <p class="hint" style="margin-top:12px">連結沒有變，重新整理網頁就是新版。使用上有任何錯誤或建議，歡迎按右下角「錯誤／建議」告訴我。</p>
-    <label class="upd-never"><input type="checkbox" id="updNever"> 永久不再提醒（之後的更新也不會跳出）</label>
+    <label class="upd-never"><input type="checkbox" id="updNever"> 這一版不再提醒（下次有新更新時仍會通知）</label>
     <div class="upd-act">
       <button class="btn" onclick="closeUpdates();openTutorial&&openTutorial(0)">看教學影片</button>
       <div class="right"><button class="btn primary" onclick="closeUpdates()">知道了</button></div>
@@ -2818,7 +2818,7 @@ function techInfo(){
 
 /* ===================== 更新提醒 =====================
    每次更新：在 UPDATES 最前面加一筆（date 就是版本號）。
-   開啟網頁時，若這一版還沒看過就跳出；勾「永久不再提醒」之後不再跳。第一次來的人不跳（沒有舊版可比較）。 */
+   開啟網頁時，若這一版還沒按「這一版不再提醒」就跳出；每次有新版本都會再跳，沒有永久關閉。第一次來的人不跳（沒有舊版可比較）。 */
 const UPDATES=[
   {date:'2026-11-12',items:[
     '自由網絡圖的連線對象可選「整個家戶（同住）」：線停在「生活圈」同住成員的外圍，不會連到單一個人。',
@@ -2834,7 +2834,7 @@ const UPDATES=[
     '內建操作教學影片（電腦 16:9、手機 9:16），按上方「▶ 教學影片」隨時看。',
     '右下角新增「錯誤／建議」回報按鈕。']},
 ];
-const LS_UPD_SEEN='genoTool.updateSeen', LS_UPD_NEVER='genoTool.updateNever';
+const LS_UPD_SEEN='genoTool.updateSeen';
 const lsGet=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const lsSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
 function renderUpdates(){
@@ -2847,21 +2847,19 @@ function renderUpdates(){
 }
 function openUpdates(manual){
   renderUpdates();
-  document.getElementById('updNever').checked=lsGet(LS_UPD_NEVER)==='1';
+  document.getElementById('updNever').checked=lsGet(LS_UPD_SEEN)===UPDATES[0].date;
   document.getElementById('updOld').open=!!manual;
   document.getElementById('updModal').style.display='flex';
 }
 function closeUpdates(){
   document.getElementById('updModal').style.display='none';
-  lsSet(LS_UPD_SEEN,UPDATES[0].date);
-  const never=document.getElementById('updNever').checked;
-  if(never) lsSet(LS_UPD_NEVER,'1'); else { try{ localStorage.removeItem(LS_UPD_NEVER); }catch(e){} }
+  if(document.getElementById('updNever').checked) lsSet(LS_UPD_SEEN,UPDATES[0].date);
+  else { try{ localStorage.removeItem(LS_UPD_SEEN); }catch(e){} }
 }
 function checkUpdates(){
   const seenVer=lsGet(LS_UPD_SEEN);
   const returning=seenVer||lsGet('geno_tut_seen_v1')||lsGet('genoTool.autosave')||lsGet('genoTool.slots');
   if(!returning){ lsSet(LS_UPD_SEEN,UPDATES[0].date); return; }   // 第一次來：沒有舊版可比較，直接記成已看過
-  if(lsGet(LS_UPD_NEVER)==='1'){ lsSet(LS_UPD_SEEN,UPDATES[0].date); return; }
   if(seenVer===UPDATES[0].date) return;
   openUpdates(false);
 }
